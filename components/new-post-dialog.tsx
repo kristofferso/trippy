@@ -3,7 +3,6 @@
 import { FormEvent, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { createPostWithOptionalVideo } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,14 +30,26 @@ export function NewPostDialog() {
     setMessage(null);
     const formData = new FormData(event.currentTarget);
     startTransition(async () => {
-      const result = await createPostWithOptionalVideo(formData);
-      if (result?.error) {
-        setMessage(result.error);
-        return;
+      try {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+          setMessage(result.error || 'Failed to create post');
+          return;
+        }
+
+        formRef.current?.reset();
+        setNewPostDialogOpen(false);
+        router.refresh();
+      } catch (error) {
+        console.error(error);
+        setMessage('Something went wrong');
       }
-      formRef.current?.reset();
-      setNewPostDialogOpen(false);
-      router.refresh();
     });
   };
 

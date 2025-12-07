@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { Reply } from 'lucide-react';
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Reply } from "lucide-react";
 
-import { deleteComment } from '@/app/actions';
-import { Button } from '@/components/ui/button';
-import { CommentForm } from '@/components/comment-form';
+import { deleteComment } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { CommentForm } from "@/components/comment-form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,8 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { formatDate } from '@/lib/utils';
+} from "@/components/ui/alert-dialog";
+import { formatDate } from "@/lib/utils";
 
 export type CommentWithAuthor = {
   id: string;
@@ -49,7 +49,8 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
   };
 
   const rootComments = comments.filter((c) => !c.parentId);
-  const getReplies = (parentId: string) => comments.filter((c) => c.parentId === parentId);
+  const getReplies = (parentId: string) =>
+    comments.filter((c) => c.parentId === parentId);
 
   return (
     <div className="space-y-6">
@@ -68,13 +69,15 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
             <div className="w-fit max-w-[calc(100%-88px)] rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2 text-slate-900">
               <p className="text-sm leading-relaxed">{comment.text}</p>
             </div>
-            
+
             <div className="flex shrink-0 items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                onClick={() =>
+                  setReplyingTo(replyingTo === comment.id ? null : comment.id)
+                }
               >
                 <Reply className="h-4 w-4" />
                 <span className="sr-only">Reply</span>
@@ -82,9 +85,9 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
               {isAdmin && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-slate-400 hover:text-red-600"
                       disabled={pending}
                     >
@@ -111,7 +114,10 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogAction onClick={() => handleDelete(comment.id)} disabled={pending}>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(comment.id)}
+                        disabled={pending}
+                      >
                         Delete
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -123,9 +129,9 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
 
           {replyingTo === comment.id && (
             <div className="ml-4 mt-2 border-l-2 border-slate-100 pl-4">
-              <CommentForm 
-                postId={postId} 
-                parentId={comment.id} 
+              <CommentForm
+                postId={postId}
+                parentId={comment.id}
                 onSuccess={() => setReplyingTo(null)}
                 autoFocus
               />
@@ -145,7 +151,7 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
                       {formatDate(reply.createdAt)}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <div className="w-fit max-w-[calc(100%-48px)] rounded-2xl rounded-tl-sm bg-slate-50 px-3 py-2 text-slate-800">
                       <p className="text-sm leading-relaxed">{reply.text}</p>
@@ -155,9 +161,9 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
                       <div className="flex shrink-0 items-center">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8 text-slate-400 hover:text-red-600"
                               disabled={pending}
                             >
@@ -178,13 +184,18 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this reply?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Delete this reply?
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
                                 This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogAction onClick={() => handleDelete(reply.id)} disabled={pending}>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(reply.id)}
+                                disabled={pending}
+                              >
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -199,11 +210,6 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
           )}
         </div>
       ))}
-      {comments.length === 0 ? (
-        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200">
-          <p className="text-sm text-slate-500">No comments yet</p>
-        </div>
-      ) : null}
     </div>
   );
 }

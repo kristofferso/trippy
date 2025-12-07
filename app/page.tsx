@@ -186,7 +186,9 @@ function CreateGroupDialog() {
             <Label htmlFor="slug">Group code</Label>
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-400">
-                {process.env.NEXT_PUBLIC_VERCEL_URL || "trippi.dev"}/
+                {process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
+                  "trippi.dev"}
+                /
               </span>
               <Input
                 id="slug"

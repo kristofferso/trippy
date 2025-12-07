@@ -1,6 +1,5 @@
 "use server";
 
-import { put } from "@vercel/blob";
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -17,23 +16,6 @@ const displayNameSchema = z.object({
   displayName: z.string().min(2, "Please enter a name"),
   email: z.string().email().optional().or(z.literal("")), // allow empty string
 });
-
-async function uploadVideoToStorage(file: File) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    throw new Error("Missing BLOB_READ_WRITE_TOKEN environment variable.");
-  }
-
-  const sanitizedName = file.name.replace(/\s+/g, "-");
-  const objectKey = `uploads/${Date.now()}-${sanitizedName}`;
-
-  const blob = await put(objectKey, file, {
-    access: "public",
-    token,
-  });
-
-  return blob.url;
-}
 
 async function getMember(memberId: string) {
   return db.query.groupMembers.findFirst({
@@ -173,36 +155,6 @@ export async function setDisplayName(
 
   await attachMemberToSession(session.id, member.id);
   return { success: true, member };
-}
-
-export async function createPostWithOptionalVideo(formData: FormData) {
-  const title = formData.get("title")?.toString() || null;
-  const body = formData.get("body")?.toString() || null;
-  const maybeFile = formData.get("video");
-  const session = await getSession();
-  if (!session?.memberId) return { error: "Not signed in for this group" };
-
-  const member = await getMember(session.memberId);
-  if (!member || !member.isAdmin) return { error: "Admins only" };
-
-  let videoUrl: string | null = null;
-  if (maybeFile instanceof File && maybeFile.size > 0) {
-    try {
-      videoUrl = await uploadVideoToStorage(maybeFile);
-    } catch (error) {
-      console.error(error);
-      return { error: "Failed to upload video" };
-    }
-  }
-
-  await db.insert(posts).values({
-    groupId: session.groupId,
-    authorId: member.id,
-    title,
-    body,
-    videoUrl,
-  });
-  return { success: true };
 }
 
 export async function postComment(

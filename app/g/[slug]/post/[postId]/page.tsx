@@ -108,7 +108,7 @@ export default async function PostPage({
                 <video
                   src={post.videoUrl}
                   controls
-                  className="aspect-video w-full"
+                  className="aspect-9/16 w-full"
                   poster={post.videoUrl + "#t=0.1"}
                 />
               </div>
