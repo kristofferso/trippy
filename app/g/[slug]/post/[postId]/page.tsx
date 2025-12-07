@@ -33,27 +33,34 @@ export default async function PostPage({ params }: { params: { slug: string; pos
   const isAdmin = !!member?.isAdmin;
 
   const reactionRows = await db
-    .select({ emoji: reactions.emoji, value: count() })
+    .select({ emoji: reactions.emoji, count: count() })
     .from(reactions)
     .where(eq(reactions.postId, post.id))
     .groupBy(reactions.emoji);
   const reactionCounts: Record<string, number> = {};
   for (const row of reactionRows) {
-    reactionCounts[row.emoji] = Number(row.value);
+    reactionCounts[row.emoji] = Number(row.count);
   }
 
-  const commentRows = await db.query.comments.findMany({
-    where: eq(comments.postId, post.id),
-    with: { member: true },
-    orderBy: asc(comments.createdAt),
-  });
+  const commentRows = await db
+    .select({
+      id: comments.id,
+      text: comments.text,
+      createdAt: comments.createdAt,
+      memberId: comments.memberId,
+      displayName: groupMembers.displayName,
+    })
+    .from(comments)
+    .innerJoin(groupMembers, eq(comments.memberId, groupMembers.id))
+    .where(eq(comments.postId, post.id))
+    .orderBy(asc(comments.createdAt));
   const commentsWithAuthors: CommentWithAuthor[] = commentRows.map((comment) => ({
     id: comment.id,
     text: comment.text,
     createdAt: comment.createdAt,
     member: {
-      id: comment.member.id,
-      displayName: comment.member.displayName,
+      id: comment.memberId,
+      displayName: comment.displayName,
     },
   }));
 
@@ -67,11 +74,11 @@ export default async function PostPage({ params }: { params: { slug: string; pos
         </CardHeader>
         <CardContent className="space-y-4">
           {post.body ? <p className="text-lg leading-relaxed">{post.body}</p> : null}
-          {post.videoUrl ? (
+          {post.videoUrl && (
             <div className="overflow-hidden rounded-lg border shadow-sm">
-              <video src={post.videoUrl ?? ''} controls className="aspect-video w-full" />
+              <video src={post.videoUrl} controls className="aspect-video w-full" />
             </div>
-          ) : null}
+          )}
           <ReactionBar postId={post.id} counts={reactionCounts} />
         </CardContent>
       </Card>
