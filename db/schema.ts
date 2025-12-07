@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  AnyPgColumn,
   boolean,
   pgTable,
   text,
@@ -60,6 +61,9 @@ export const comments = pgTable('comments', {
   memberId: uuid('member_id')
     .notNull()
     .references(() => groupMembers.id, { onDelete: 'cascade' }),
+  parentId: uuid('parent_id').references((): AnyPgColumn => comments.id, {
+    onDelete: 'cascade',
+  }),
   text: text('text').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -116,7 +120,7 @@ export const postRelations = relations(posts, ({ one, many }) => ({
   reactions: many(reactions),
 }));
 
-export const commentRelations = relations(comments, ({ one }) => ({
+export const commentRelations = relations(comments, ({ one, many }) => ({
   post: one(posts, {
     fields: [comments.postId],
     references: [posts.id],
@@ -124,6 +128,14 @@ export const commentRelations = relations(comments, ({ one }) => ({
   member: one(groupMembers, {
     fields: [comments.memberId],
     references: [groupMembers.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+    relationName: 'parent_child',
+  }),
+  replies: many(comments, {
+    relationName: 'parent_child',
   }),
 }));
 

@@ -180,7 +180,11 @@ export async function createPostWithOptionalVideo(formData: FormData) {
   return { success: true };
 }
 
-export async function postComment(postId: string, text: string) {
+export async function postComment(
+  postId: string,
+  text: string,
+  parentId?: string
+) {
   if (!text.trim()) return { error: "Please write a comment" };
   const session = await getSession();
   if (!session) return { error: "No session", needsProfile: false };
@@ -190,9 +194,20 @@ export async function postComment(postId: string, text: string) {
   if (!post || post.groupId !== session.groupId)
     return { error: "Post not found in this group" };
 
+  if (parentId) {
+    const parentComment = await db.query.comments.findFirst({
+      where: eq(comments.id, parentId),
+    });
+    if (!parentComment) return { error: "Parent comment not found" };
+    if (parentComment.parentId) {
+      return { error: "Replies are limited to 2 levels" };
+    }
+  }
+
   await db.insert(comments).values({
     postId,
     memberId: session.memberId,
+    parentId,
     text,
   });
   return { success: true };
@@ -228,6 +243,17 @@ export async function deleteComment(commentId: string) {
   const admin = await ensureAdmin(post.groupId);
   if (!admin) return { error: "Admins only" };
   await db.delete(comments).where(eq(comments.id, commentId));
+  return { success: true };
+}
+
+export async function deletePost(postId: string) {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+  });
+  if (!post) return { error: "Post missing" };
+  const admin = await ensureAdmin(post.groupId);
+  if (!admin) return { error: "Admins only" };
+  await db.delete(posts).where(eq(posts.id, postId));
   return { success: true };
 }
 

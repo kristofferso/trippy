@@ -1,22 +1,23 @@
 import { notFound } from "next/navigation";
 import { count, desc, eq, inArray } from "drizzle-orm";
+import { Video, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PasswordGate } from "@/components/password-gate";
 import { NameDialog } from "@/components/name-dialog";
 import { NewPostDialog } from "@/components/new-post-dialog";
-import { deleteMember } from "@/app/actions";
+import { deletePost, deleteMember } from "@/app/actions";
 import { db } from "@/db";
 import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
 import { createSession, getSession, Session } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default async function GroupFeedPage({
   params,
@@ -90,127 +91,222 @@ export default async function GroupFeedPage({
     .where(eq(groupMembers.groupId, group.id))
     .orderBy(desc(groupMembers.createdAt));
 
+  async function handleDeletePost(postId: string) {
+    "use server";
+    await deletePost(postId);
+  }
+
   async function removeMember(memberId: string) {
     "use server";
     await deleteMember(memberId);
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-white">
       <NameDialog />
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
-            Group
-          </p>
-          <h1 className="text-3xl font-bold">{group.name}</h1>
-          <p className="text-muted-foreground">/{group.slug}</p>
+
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold text-slate-900">
+              {group.name}
+            </h1>
+            <span className="text-sm text-slate-400">/{group.slug}</span>
+          </div>
+          {isAdmin && <NewPostDialog />}
         </div>
-      </div>
+      </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle>Feed</CardTitle>
-                <CardDescription>
-                  Latest posts from admins in this group.
-                </CardDescription>
+      <main className="mx-auto max-w-2xl px-4 py-8">
+        <div className="space-y-12">
+          {postList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 rounded-full bg-slate-100 p-4">
+                <Video className="h-8 w-8 text-slate-400" />
               </div>
-              {isAdmin ? <NewPostDialog /> : null}
+              <h3 className="text-lg font-medium text-slate-900">
+                No posts yet
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Be the first to share something with the group.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {postList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No posts yet.</p>
-            ) : null}
-            {postList.map((post) => (
-              <Card key={post.id} className="border bg-white/80 shadow-sm">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      {post.title ? (
-                        <CardTitle className="text-xl">{post.title}</CardTitle>
-                      ) : null}
-                      {post.body ? (
-                        <CardDescription className="line-clamp-2 text-base text-muted-foreground">
-                          {post.body}
-                        </CardDescription>
-                      ) : null}
-                    </div>
-                    <div className="text-right text-xs text-muted-foreground">
-                      <p>{formatDate(post.createdAt)}</p>
-                      {post.videoUrl ? (
-                        <p className="text-primary">Video attached</p>
-                      ) : null}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex gap-3">
-                    {Object.entries(reactionCounts[post.id] ?? {}).map(
-                      ([emoji, value]) => (
-                        <span
-                          key={emoji}
-                          className="flex items-center gap-1 text-base"
-                        >
-                          <span>{emoji}</span>
-                          <span>{value}</span>
-                        </span>
-                      )
-                    )}
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <a href={`/g/${group.slug}/post/${post.id}`}>Open</a>
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    {commentCounts[post.id] ?? 0} comments
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </CardContent>
-        </Card>
+          ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>
-              Admins can remove members if needed.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          {postList.map((post) => (
+            <article key={post.id} className="group relative">
+              <a
+                href={`/g/${group.slug}/post/${post.id}`}
+                className="block space-y-4"
+              >
+                {/* Content Preview */}
+                {post.videoUrl ? (
+                  <div className="relative aspect-video overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-900/5 transition-transform group-hover:scale-[1.01]">
+                    <video
+                      src={post.videoUrl}
+                      className="h-full w-full object-cover"
+                      muted
+                      playsInline
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/0">
+                      <div className="rounded-full bg-white/90 p-3 shadow-lg backdrop-blur-sm transition-transform group-hover:scale-110">
+                        <Video
+                          className="h-6 w-6 text-slate-900"
+                          fill="currentColor"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative aspect-[2/1] overflow-hidden rounded-xl bg-slate-50 p-6 ring-1 ring-slate-900/5 transition-transform group-hover:scale-[1.01]">
+                    <div className="flex h-full flex-col justify-center">
+                      <h2 className="line-clamp-2 text-2xl font-bold text-slate-900">
+                        {post.title || "Untitled Post"}
+                      </h2>
+                      {post.body && (
+                        <p className="mt-2 line-clamp-2 text-slate-600">
+                          {post.body}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Metadata & Stats */}
+                <div className="flex items-start justify-between gap-4 px-1">
+                  <div className="space-y-1">
+                    {post.videoUrl && (
+                      <h2 className="font-semibold text-slate-900 group-hover:text-blue-600">
+                        {post.title || "Untitled Video"}
+                      </h2>
+                    )}
+                    <div className="flex items-center gap-3 text-sm text-slate-500">
+                      <time dateTime={new Date(post.createdAt).toISOString()}>
+                        {formatDate(post.createdAt)}
+                      </time>
+                      <span>•</span>
+                      <div className="flex items-center gap-3">
+                        {commentCounts[post.id] ? (
+                          <div className="flex items-center gap-1">
+                            <MessageCircle className="h-4 w-4" />
+                            <span>{commentCounts[post.id]}</span>
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center gap-1">
+                          {Object.entries(reactionCounts[post.id] ?? {})
+                            .slice(0, 3)
+                            .map(([emoji]) => (
+                              <span
+                                key={emoji}
+                                className="text-base leading-none"
+                              >
+                                {emoji}
+                              </span>
+                            ))}
+                          {Object.values(reactionCounts[post.id] ?? {}).reduce(
+                            (a, b) => a + b,
+                            0
+                          ) > 0 && (
+                            <span className="ml-1">
+                              {Object.values(
+                                reactionCounts[post.id] ?? {}
+                              ).reduce((a, b) => a + b, 0)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="-mr-2 h-8 w-8 text-slate-400 hover:text-slate-900"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">More options</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <form action={handleDeletePost.bind(null, post.id)}>
+                          <DropdownMenuItem asChild>
+                            <button
+                              type="submit"
+                              className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Post
+                            </button>
+                          </DropdownMenuItem>
+                        </form>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </a>
+            </article>
+          ))}
+        </div>
+
+        {/* Members Section (Simplified) */}
+        <div className="mt-20 border-t pt-10">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Members ({members.length})
+            </h3>
+            {isAdmin && (
+              <span className="text-xs text-slate-500">
+                Admins can remove members
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {members.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center justify-between rounded-md border p-2 text-muted-foreground"
+                className="group relative flex items-center gap-3 rounded-lg border bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div>
-                  <p className="font-medium text-foreground">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-600">
+                  {member.displayName.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">
                     {member.displayName}
                   </p>
-                  {member.isAdmin ? (
-                    <p className="text-xs text-primary">Admin</p>
-                  ) : null}
+                  {member.isAdmin && (
+                    <p className="text-[10px] uppercase tracking-wider text-blue-600">
+                      Admin
+                    </p>
+                  )}
                 </div>
-                {isAdmin && member.id !== session?.memberId ? (
-                  <form action={removeMember.bind(null, member.id)}>
-                    <Button type="submit" variant="destructive" size="sm">
-                      Remove
+
+                {isAdmin && member.id !== session?.memberId && (
+                  <form
+                    action={removeMember.bind(null, member.id)}
+                    className="absolute -right-2 -top-2 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow-sm"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span className="sr-only">Remove</span>
                     </Button>
                   </form>
-                ) : null}
+                )}
               </div>
             ))}
-            {members.length === 0 ? (
-              <p className="text-muted-foreground">
-                No members registered yet.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

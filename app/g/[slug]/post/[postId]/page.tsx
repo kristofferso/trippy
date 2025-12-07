@@ -1,13 +1,6 @@
 import { notFound } from "next/navigation";
 import { asc, count, eq } from "drizzle-orm";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { PasswordGate } from "@/components/password-gate";
 import { NameDialog } from "@/components/name-dialog";
 import { ReactionBar } from "@/components/reaction-bar";
@@ -63,6 +56,7 @@ export default async function PostPage({
       text: comments.text,
       createdAt: comments.createdAt,
       memberId: comments.memberId,
+      parentId: comments.parentId,
       displayName: groupMembers.displayName,
     })
     .from(comments)
@@ -74,6 +68,7 @@ export default async function PostPage({
       id: comment.id,
       text: comment.text,
       createdAt: comment.createdAt,
+      parentId: comment.parentId,
       member: {
         id: comment.memberId,
         displayName: comment.displayName,
@@ -82,44 +77,66 @@ export default async function PostPage({
   );
 
   return (
-    <div className="space-y-4">
-      <Card className="overflow-hidden">
-        <CardHeader className="space-y-1 bg-gradient-to-r from-slate-100 to-white">
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
-            {group.name}
-          </p>
-          {post.title ? (
-            <CardTitle className="text-3xl">{post.title}</CardTitle>
-          ) : null}
-          <CardDescription>{formatDate(post.createdAt)}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {post.body ? (
-            <p className="text-lg leading-relaxed">{post.body}</p>
-          ) : null}
-          {post.videoUrl && (
-            <div className="overflow-hidden rounded-lg border shadow-sm">
-              <video
-                src={post.videoUrl}
-                controls
-                className="aspect-video w-full"
-              />
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
+        <header className="mb-8 space-y-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+              {post.title || "Untitled Post"}
+            </h1>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <span className="font-medium text-slate-900">{group.name}</span>
+              <span>•</span>
+              <time dateTime={new Date(post.createdAt).toISOString()}>
+                {formatDate(post.createdAt)}
+              </time>
             </div>
-          )}
-          <ReactionBar postId={post.id} counts={reactionCounts} />
-        </CardContent>
-      </Card>
+          </div>
+        </header>
 
-      <Card className="animate-in fade-in slide-in-from-bottom-4">
-        <CardHeader>
-          <CardTitle>Comments</CardTitle>
-          <CardDescription>Share your thoughts with the group.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CommentForm postId={post.id} />
-          <CommentList comments={commentsWithAuthors} isAdmin={isAdmin} />
-        </CardContent>
-      </Card>
+        <main className="space-y-8">
+          <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+            <div className="flex-1 space-y-8">
+              {post.body && (
+                <div className="prose prose-slate max-w-none text-lg text-slate-700">
+                  <p>{post.body}</p>
+                </div>
+              )}
+
+              {post.videoUrl && (
+                <div className="overflow-hidden rounded-xl bg-slate-900 shadow-2xl ring-1 ring-slate-900/10">
+                  <video
+                    src={post.videoUrl}
+                    controls
+                    className="aspect-video w-full"
+                    poster={post.videoUrl + "#t=0.1"}
+                  />
+                </div>
+              )}
+
+              <div className="w-full py-2">
+                <ReactionBar postId={post.id} counts={reactionCounts} />
+              </div>
+            </div>
+
+            <div className="w-full space-y-8 border-t pt-8 md:w-[350px] md:border-t-0 md:pt-0">
+              <div className="sticky top-8 space-y-6">
+                <div>
+                  <h2 className="mb-4 text-lg font-semibold text-slate-900">
+                    Comments ({commentsWithAuthors.length})
+                  </h2>
+                  <CommentForm postId={post.id} />
+                </div>
+                <CommentList
+                  comments={commentsWithAuthors}
+                  isAdmin={isAdmin}
+                  postId={post.id}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
       <NameDialog />
     </div>
   );
