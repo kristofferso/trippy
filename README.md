@@ -62,6 +62,14 @@ Open [http://localhost:3000](http://localhost:3000) to create or join a circle.
 
 ### Deploying
 
+1. `BASE_URL`: Set this to your production domain.
+2. `STRIPE_SECRET_KEY`: Use your Stripe secret key for the production environment.
+3. `STRIPE_WEBHOOK_SECRET`: Use the webhook secret from the production webhook you created in step 1.
+4. `POSTGRES_URL`: Set this to your production database URL.
+5. `AUTH_SECRET`: Set this to a random string. `openssl rand -base64 32` will generate one.
+6. `BLOB_READ_WRITE_TOKEN`: Needed for uploading videos to Vercel Blob storage. Create a Blob store in your Vercel dashboard
+   (or via the Vercel CLI) and add a read/write token to your environment variables so `@vercel/blob` can call
+   `put()` when handling uploads.
 When deploying (e.g., to Vercel), add the same `POSTGRES_URL` environment variable in your project settings so the app can reach your production database.
 
 ## Other Templates

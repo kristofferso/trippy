@@ -1,5 +1,6 @@
 'use server';
 
+import { put } from '@vercel/blob';
 import { count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -20,9 +21,20 @@ const displayNameSchema = z.object({
 });
 
 async function uploadVideoToStorage(file: File) {
-  // Stub storage uploader. Replace with S3/R2/Vercel Blob.
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    throw new Error('Missing BLOB_READ_WRITE_TOKEN environment variable.');
+  }
+
   const sanitizedName = file.name.replace(/\s+/g, '-');
-  return `https://storage.example.com/uploads/${Date.now()}-${sanitizedName}`;
+  const objectKey = `uploads/${Date.now()}-${sanitizedName}`;
+
+  const blob = await put(objectKey, file, {
+    access: 'public',
+    token,
+  });
+
+  return blob.url;
 }
 
 async function getMember(memberId: string) {
@@ -114,7 +126,12 @@ export async function createPostWithOptionalVideo(formData: FormData) {
 
   let videoUrl: string | null = null;
   if (maybeFile instanceof File && maybeFile.size > 0) {
-    videoUrl = await uploadVideoToStorage(maybeFile);
+    try {
+      videoUrl = await uploadVideoToStorage(maybeFile);
+    } catch (error) {
+      console.error(error);
+      return { error: 'Failed to upload video' };
+    }
   }
 
   await db.insert(posts).values({
