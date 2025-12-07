@@ -74,20 +74,27 @@ export default async function GroupFeedPage({ params }: { params: { slug: string
 
   return (
     <div className="space-y-6">
+      <NameDialog />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-muted-foreground">Group</p>
           <h1 className="text-3xl font-bold">{group.name}</h1>
           <p className="text-muted-foreground">/{group.slug}</p>
         </div>
-        {isAdmin ? <NewPostDialog /> : null}
       </div>
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Feed</CardTitle>
-            <CardDescription>Latest posts from admins in this group.</CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Feed</CardTitle>
+                <CardDescription>Latest posts from admins in this group.</CardDescription>
+              </div>
+              {isAdmin ? (
+                <NewPostDialog />
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {postList.length === 0 ? <p className="text-sm text-muted-foreground">No posts yet.</p> : null}
@@ -158,7 +165,6 @@ export default async function GroupFeedPage({ params }: { params: { slug: string
           </CardContent>
         </Card>
       </section>
-      <NameDialog />
     </div>
   );
 }
