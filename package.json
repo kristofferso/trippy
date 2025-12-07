@@ -27,7 +27,7 @@
     "framer-motion": "^12.23.25",
     "geist": "^1.5.1",
     "lucide-react": "^0.511.0",
-    "next": "16.0.0-canary.0",
+    "next": "16.0.7",
     "pg": "^8.11.5",
     "postcss": "^8.5.3",
     "radix-ui": "^1.4.2",
