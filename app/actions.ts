@@ -141,13 +141,21 @@ export async function createGroup(
   return { success: true, groupId: inserted.id };
 }
 
-export async function setDisplayName(displayName: string, email?: string) {
+export async function setDisplayName(
+  displayName: string,
+  email?: string,
+  groupId?: string
+) {
   const parsed = displayNameSchema.safeParse({ displayName, email });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
-  const session = await getSession();
-  if (!session) return { error: "No active session" };
+  let session = await getSession();
+  if (!session) {
+    if (!groupId) return { error: "No active session" };
+    session = await createSession(groupId, null);
+  }
+
   const memberCount = await db
     .select({ value: count() })
     .from(groupMembers)
@@ -204,7 +212,7 @@ export async function postComment(
 ) {
   if (!text.trim()) return { error: "Please write a comment" };
   const session = await getSession();
-  if (!session) return { error: "No session", needsProfile: false };
+  if (!session) return { error: "No session", needsProfile: true };
   if (!session.memberId)
     return { error: "Need display name", needsProfile: true };
   const post = await db.query.posts.findFirst({ where: eq(posts.id, postId) });
@@ -233,7 +241,7 @@ export async function postComment(
 export async function addReaction(postId: string, emoji: string) {
   if (!emoji) return { error: "Pick an emoji" };
   const session = await getSession();
-  if (!session) return { error: "No session", needsProfile: false };
+  if (!session) return { error: "No session", needsProfile: true };
   if (!session.memberId)
     return { error: "Need display name", needsProfile: true };
   const post = await db.query.posts.findFirst({ where: eq(posts.id, postId) });

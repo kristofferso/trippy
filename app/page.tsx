@@ -177,7 +177,7 @@ function CreateGroupDialog() {
             <Label htmlFor="displayName">Your Name</Label>
             <Input
               id="displayName"
-              placeholder="Jane Doe"
+              placeholder="Trippi MacTripface"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />

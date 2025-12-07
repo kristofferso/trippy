@@ -83,7 +83,7 @@ export default async function GroupFeedPage({
 
   return (
     <div className="min-h-screen bg-white">
-      <NameDialog />
+      <NameDialog groupId={group.id} />
 
       <div className="space-y-12">
         {postList.length === 0 ? (

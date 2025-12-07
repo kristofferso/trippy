@@ -136,7 +136,7 @@ export default async function PostPage({
           </div>
         </div>
       </main>
-      <NameDialog />
+      <NameDialog groupId={group.id} />
     </>
   );
 }
