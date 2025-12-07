@@ -157,6 +157,32 @@ export async function setDisplayName(
   return { success: true, member };
 }
 
+export async function createPost(
+  title: string | null,
+  body: string | null,
+  videoUrl: string | null
+) {
+  const session = await getSession();
+  if (!session?.memberId) {
+    return { error: "Not signed in for this group" };
+  }
+
+  const member = await getMember(session.memberId);
+  if (!member || !member.isAdmin) {
+    return { error: "Admins only" };
+  }
+
+  await db.insert(posts).values({
+    groupId: session.groupId,
+    authorId: member.id,
+    title,
+    body,
+    videoUrl,
+  });
+
+  return { success: true };
+}
+
 export async function postComment(
   postId: string,
   text: string,
