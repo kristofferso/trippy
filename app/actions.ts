@@ -2,13 +2,17 @@
 
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
+import { comments, groupMembers, groups, posts, reactions, users } from "@/db/schema";
 import {
-  attachMemberToSession,
-  createSession,
-  getSession,
+  attachMemberToMemberSession,
+  createMemberSession,
+  getMemberSession,
+  getUserSession,
+  createUserSession,
+  logoutUser
 } from "@/lib/session";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
@@ -24,7 +28,7 @@ async function getMember(memberId: string) {
 }
 
 async function ensureSessionForGroup(groupId: string) {
-  const session = await getSession(groupId);
+  const session = await getMemberSession(groupId);
   if (!session) return null;
   return session;
 }
@@ -50,7 +54,7 @@ export async function joinGroupBySlug(
     return { error: "Group not found" };
   }
 
-  const existingSession = await getSession(group.id);
+  const existingSession = await getMemberSession(group.id);
   if (existingSession) {
     return { success: true, groupId: group.id };
   }
@@ -72,6 +76,10 @@ export async function joinGroupBySlug(
       .from(groupMembers)
       .where(eq(groupMembers.groupId, group.id));
     const isAdmin = (memberCount[0]?.value ?? 0) === 0;
+    
+    // Check if user is logged in platform-side to link account
+    const userSession = await getUserSession();
+    
     const [member] = await db
       .insert(groupMembers)
       .values({
@@ -79,30 +87,28 @@ export async function joinGroupBySlug(
         displayName: parsed.data.displayName,
         email: parsed.data.email || null,
         isAdmin,
+        userId: userSession?.userId || null,
       })
       .returning();
     memberId = member.id;
   }
 
-  await createSession(group.id, memberId);
+  await createMemberSession(group.id, memberId);
   return { success: true, groupId: group.id };
 }
 
 export async function createGroup(
   slug: string,
   name: string,
-  displayName: string,
   password?: string
 ) {
+  const userSession = await getUserSession();
+  if (!userSession || !userSession.user) return { error: "Must be logged in to create groups" };
+
   const existing = await db.query.groups.findFirst({
     where: eq(groups.slug, slug),
   });
   if (existing) return { error: "Slug already taken" };
-
-  const parsed = displayNameSchema.safeParse({ displayName });
-  if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid name" };
-  }
 
   const passwordHash = password ? await hashPassword(password) : null;
   const [inserted] = await db
@@ -114,12 +120,13 @@ export async function createGroup(
     .insert(groupMembers)
     .values({
       groupId: inserted.id,
-      displayName: parsed.data.displayName,
+      displayName: userSession.user.username, // Use username as default display name
       isAdmin: true,
+      userId: userSession.userId,
     })
     .returning();
 
-  await createSession(inserted.id, member.id);
+  await createMemberSession(inserted.id, member.id);
   return { success: true, groupId: inserted.id };
 }
 
@@ -132,10 +139,10 @@ export async function setDisplayName(
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
-  let session = await getSession();
+  let session = await getMemberSession();
   if (!session) {
     if (!groupId) return { error: "No active session" };
-    session = await createSession(groupId, null);
+    session = await createMemberSession(groupId, null);
   }
 
   const memberCount = await db
@@ -143,6 +150,10 @@ export async function setDisplayName(
     .from(groupMembers)
     .where(eq(groupMembers.groupId, session.groupId));
   const isAdmin = (memberCount[0]?.value ?? 0) === 0;
+
+  // Check if user is logged in platform-side to link account
+  const userSession = await getUserSession();
+
   const [member] = await db
     .insert(groupMembers)
     .values({
@@ -150,10 +161,11 @@ export async function setDisplayName(
       displayName: parsed.data.displayName,
       email: parsed.data.email || null,
       isAdmin,
+      userId: userSession?.userId || null,
     })
     .returning();
 
-  await attachMemberToSession(session.id, member.id);
+  await attachMemberToMemberSession(session.id, member.id);
   return { success: true, member };
 }
 
@@ -163,7 +175,7 @@ export async function createPost(
   videoUrl: string | null,
   imageUrls: string[] | null
 ) {
-  const session = await getSession();
+  const session = await getMemberSession();
   if (!session?.memberId) {
     return { error: "Not signed in for this group" };
   }
@@ -191,7 +203,7 @@ export async function postComment(
   parentId?: string
 ) {
   if (!text.trim()) return { error: "Please write a comment" };
-  const session = await getSession();
+  const session = await getMemberSession();
   if (!session) return { error: "No session", needsProfile: true };
   if (!session.memberId)
     return { error: "Need display name", needsProfile: true };
@@ -220,7 +232,7 @@ export async function postComment(
 
 export async function addReaction(postId: string, emoji: string) {
   if (!emoji) return { error: "Pick an emoji" };
-  const session = await getSession();
+  const session = await getMemberSession();
   if (!session) return { error: "No session", needsProfile: true };
   if (!session.memberId)
     return { error: "Need display name", needsProfile: true };
@@ -273,7 +285,7 @@ export async function deleteMember(memberId: string) {
 }
 
 export async function getGroupMembers(groupId: string) {
-  const session = await getSession(groupId);
+  const session = await getMemberSession(groupId);
   if (!session) return [];
 
   return db
@@ -285,4 +297,48 @@ export async function getGroupMembers(groupId: string) {
     .from(groupMembers)
     .where(eq(groupMembers.groupId, groupId))
     .orderBy(desc(groupMembers.createdAt));
+}
+
+export async function registerAction(formData: FormData) {
+  const username = formData.get("username") as string;
+  const password = formData.get("password") as string;
+  
+  if (!username || !password) return { error: "Username and password required" };
+  if (password.length < 8) return { error: "Password too short" };
+  
+  const existing = await db.query.users.findFirst({
+    where: eq(users.username, username),
+  });
+  
+  if (existing) return { error: "Username taken" };
+  
+  const passwordHash = await hashPassword(password);
+  const [user] = await db.insert(users).values({ username, passwordHash }).returning();
+  
+  await createUserSession(user.id);
+  return { success: true };
+}
+
+export async function loginAction(formData: FormData) {
+  const username = formData.get("username") as string;
+  const password = formData.get("password") as string;
+  
+  if (!username || !password) return { error: "Username and password required" };
+  
+  const user = await db.query.users.findFirst({
+    where: eq(users.username, username),
+  });
+  
+  if (!user) return { error: "Invalid credentials" };
+  
+  const valid = await verifyPassword(user.passwordHash, password);
+  if (!valid) return { error: "Invalid credentials" };
+  
+  await createUserSession(user.id);
+  return { success: true };
+}
+
+export async function logoutAction() {
+  await logoutUser();
+  redirect("/login");
 }

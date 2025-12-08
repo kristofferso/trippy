@@ -3,23 +3,34 @@
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, User, LogOut, LayoutDashboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import trippi from "@/public/trippi.png";
 import { NewPostDialog } from "@/components/new-post-dialog";
 import { MembersDialog } from "@/components/members-dialog";
+import { logoutAction } from "@/app/actions";
 
 export function SiteHeader({
   groupName,
   groupSlug,
   isAdmin,
   groupId,
+  user,
 }: {
   groupName?: string;
   groupSlug?: string;
   isAdmin?: boolean;
   groupId?: string;
+  user?: { username: string } | null;
 }) {
   const pathname = usePathname();
   const isPostPage = pathname?.includes("/post/");
@@ -59,12 +70,51 @@ export function SiteHeader({
           )}
         </div>
 
-        {groupId && (
-          <div className="flex items-center gap-2">
-            <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
-            {isAdmin && <NewPostDialog />}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {groupId && (
+            <>
+              <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
+              {isAdmin && <NewPostDialog />}
+            </>
+          )}
+
+          {/* If we are not in a group context or if we just want to show the user menu always */}
+          {!groupId && user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
+                    <span className="text-sm font-medium text-slate-600">
+                      {user.username[0].toUpperCase()}
+                    </span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard" className="cursor-pointer">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <form action={logoutAction}>
+                   <button type="submit" className="w-full">
+                    <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                   </button>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : !groupId && (
+             <Button asChild variant="ghost" size="sm">
+               <Link href="/login">Login</Link>
+             </Button>
+          )}
+        </div>
       </div>
     </div>
   );

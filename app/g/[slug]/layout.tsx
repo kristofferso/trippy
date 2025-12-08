@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { SiteHeader } from "@/components/site-header";
 import { db } from "@/db";
 import { groups, groupMembers } from "@/db/schema";
-import { getSession } from "@/lib/session";
+import { getMemberSession } from "@/lib/session";
 
 export default async function GroupLayout({
   children,
@@ -20,7 +20,7 @@ export default async function GroupLayout({
 
   if (!group) notFound();
 
-  const session = await getSession(group.id);
+  const session = await getMemberSession(group.id);
   const member = session?.memberId
     ? await db.query.groupMembers.findFirst({
         where: eq(groupMembers.id, session.memberId),

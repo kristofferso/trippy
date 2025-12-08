@@ -1,12 +1,6 @@
 import { notFound } from "next/navigation";
 import { count, desc, eq, inArray } from "drizzle-orm";
-import {
-  Video,
-  MessageCircle,
-  MoreVertical,
-  Trash2,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Video, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +14,7 @@ import { NameDialog } from "@/components/name-dialog";
 import { deletePost } from "@/app/actions";
 import { db } from "@/db";
 import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
-import { createSession, getSession, Session } from "@/lib/session";
+import { getMemberSession, MemberSession } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
 
 export default async function GroupFeedPage({
@@ -34,7 +28,7 @@ export default async function GroupFeedPage({
   });
   if (!group) notFound();
 
-  let session = (await getSession(group.id)) as Session | null;
+  let session = (await getMemberSession(group.id)) as MemberSession | null;
 
   if (group.passwordHash && !session) {
     return <PasswordGate slug={group.slug} name={group.name} />;

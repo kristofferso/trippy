@@ -8,6 +8,22 @@ import {
   uuid
 } from 'drizzle-orm/pg-core';
 
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  username: text('username').unique().notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userSessions = pgTable('user_sessions', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+});
+
 export const groups = pgTable('groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   slug: text('slug').notNull().unique(),
@@ -21,13 +37,14 @@ export const groupMembers = pgTable('group_members', {
   groupId: uuid('group_id')
     .notNull()
     .references(() => groups.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   displayName: text('display_name').notNull(),
   email: text('email'),
   isAdmin: boolean('is_admin').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const sessions = pgTable('sessions', {
+export const memberSessions = pgTable('member_sessions', {
   id: text('id').primaryKey(),
   groupId: uuid('group_id')
     .notNull()
@@ -81,10 +98,22 @@ export const reactions = pgTable('reactions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const userRelations = relations(users, ({ many }) => ({
+  sessions: many(userSessions),
+  memberships: many(groupMembers),
+}));
+
+export const userSessionRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}));
+
 export const groupRelations = relations(groups, ({ many }) => ({
   members: many(groupMembers),
   posts: many(posts),
-  sessions: many(sessions),
+  memberSessions: many(memberSessions),
 }));
 
 export const memberRelations = relations(groupMembers, ({ one, many }) => ({
@@ -92,18 +121,22 @@ export const memberRelations = relations(groupMembers, ({ one, many }) => ({
     fields: [groupMembers.groupId],
     references: [groups.id],
   }),
+  user: one(users, {
+    fields: [groupMembers.userId],
+    references: [users.id],
+  }),
   posts: many(posts),
   comments: many(comments),
   reactions: many(reactions),
 }));
 
-export const sessionRelations = relations(sessions, ({ one }) => ({
+export const memberSessionRelations = relations(memberSessions, ({ one }) => ({
   group: one(groups, {
-    fields: [sessions.groupId],
+    fields: [memberSessions.groupId],
     references: [groups.id],
   }),
   member: one(groupMembers, {
-    fields: [sessions.memberId],
+    fields: [memberSessions.memberId],
     references: [groupMembers.id],
   }),
 }));
@@ -151,9 +184,11 @@ export const reactionRelations = relations(reactions, ({ one }) => ({
   }),
 }));
 
+export type User = typeof users.$inferSelect;
+export type UserSession = typeof userSessions.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type GroupMember = typeof groupMembers.$inferSelect;
-export type Session = typeof sessions.$inferSelect;
+export type MemberSession = typeof memberSessions.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Reaction = typeof reactions.$inferSelect;

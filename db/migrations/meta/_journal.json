@@ -22,6 +22,20 @@
       "when": 1765154359752,
       "tag": "0002_groovy_warbird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765154564999,
+      "tag": "0003_misty_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765154880676,
+      "tag": "0004_high_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

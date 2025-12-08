@@ -15,7 +15,7 @@ import { CommentForm } from "@/components/comment-form";
 import { CommentList, type CommentWithAuthor } from "@/components/comment-list";
 import { db } from "@/db";
 import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
-import { createSession, getSession } from "@/lib/session";
+import { getMemberSession } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
 
 export default async function PostPage({
@@ -30,9 +30,9 @@ export default async function PostPage({
   });
   if (!group) notFound();
 
-  let session = await getSession(group.id);
+  let session = await getMemberSession(group.id);
   // if (!session && !group.passwordHash) {
-  //   session = await createSession(group.id, null);
+  //   session = await createMemberSession(group.id, null);
   // }
   if (group.passwordHash && !session) {
     return <PasswordGate slug={group.slug} name={group.name} />;
