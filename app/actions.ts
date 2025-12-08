@@ -207,7 +207,8 @@ export async function createPost(
   videoUrl: string | null,
   imageUrls: string[] | null,
   groupId?: string,
-  thumbnailUrl?: string | null
+  thumbnailUrl?: string | null,
+  mediaItems?: { type: 'image' | 'video'; url: string; thumbnailUrl?: string }[]
 ) {
   // Fallback for backward compatibility if groupId is missing (though we should pass it)
   // If missing, we can't really know which group unless we rely on the cookie, which `getCurrentMember` handles partially via `getMemberSession` fallback
@@ -234,12 +235,15 @@ export async function createPost(
     return { error: "Admins only" };
   }
 
-  const media: { type: 'image' | 'video'; url: string; thumbnailUrl?: string }[] = [];
-  if (videoUrl) {
-    media.push({ type: 'video', url: videoUrl, thumbnailUrl: thumbnailUrl || undefined });
-  }
-  if (imageUrls) {
-    imageUrls.forEach((url) => media.push({ type: 'image', url }));
+  let media: { type: 'image' | 'video'; url: string; thumbnailUrl?: string }[] = mediaItems || [];
+  
+  if (media.length === 0) {
+    if (videoUrl) {
+      media.push({ type: 'video', url: videoUrl, thumbnailUrl: thumbnailUrl || undefined });
+    }
+    if (imageUrls) {
+      imageUrls.forEach((url) => media.push({ type: 'image', url }));
+    }
   }
 
   await db.insert(posts).values({
@@ -252,6 +256,54 @@ export async function createPost(
     media,
   });
 
+  const group = await db.query.groups.findFirst({
+    where: eq(groups.id, groupId),
+  });
+
+  if (group) {
+      revalidatePath(`/g/${group.slug}`);
+  }
+
+  return { success: true };
+}
+
+export async function updatePost(
+  postId: string,
+  title: string | null,
+  body: string | null,
+  media: { type: 'image' | 'video'; url: string; thumbnailUrl?: string }[]
+) {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+  });
+  if (!post) return { error: "Post not found" };
+
+  const admin = await ensureAdmin(post.groupId);
+  if (!admin) return { error: "Admins only" };
+
+  // Keep legacy fields in sync roughly
+  const videoUrl = media.find(m => m.type === 'video')?.url || null;
+  const imageUrls = media.filter(m => m.type === 'image').map(m => m.url);
+
+  await db.update(posts)
+    .set({
+      title,
+      body,
+      media,
+      videoUrl, 
+      imageUrls: imageUrls.length ? imageUrls : null
+    })
+    .where(eq(posts.id, postId));
+
+  const group = await db.query.groups.findFirst({
+      where: eq(groups.id, post.groupId)
+  });
+  
+  if (group) {
+      revalidatePath(`/g/${group.slug}`);
+      revalidatePath(`/g/${group.slug}/post/${postId}`);
+  }
+  
   return { success: true };
 }
 

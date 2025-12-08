@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { count, desc, eq, inArray } from "drizzle-orm";
-import { Video, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
+import { Video, MessageCircle, MoreVertical, Trash2, Edit } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -224,6 +225,15 @@ export default async function GroupFeedPage({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/g/${group.slug}/post/${post.id}/edit`}
+                            className="flex w-full cursor-pointer items-center"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Post
+                          </Link>
+                        </DropdownMenuItem>
                         <form action={handleDeletePost.bind(null, post.id)}>
                           <DropdownMenuItem asChild>
                             <button

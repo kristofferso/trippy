@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import trippi from "@/public/trippi.png";
-import { NewPostDialog } from "@/components/new-post-dialog";
 import { MembersDialog } from "@/components/members-dialog";
 import { logoutAction } from "@/app/actions";
 
@@ -74,7 +73,11 @@ export function SiteHeader({
         {groupId && (
             <>
             <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
-            {isAdmin && <NewPostDialog groupId={groupId} />}
+            {isAdmin && groupSlug && (
+              <Button asChild>
+                <Link href={`/g/${groupSlug}/post/new`}>New post</Link>
+              </Button>
+            )}
             </>
           )}
 
