@@ -520,8 +520,42 @@ export async function updateUsernameAction(formData: FormData) {
       .where(eq(users.id, session.userId));
     
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/profile");
     return { success: true };
   } catch (error) {
     return { error: "Username already taken" };
   }
+}
+
+export async function updatePasswordAction(formData: FormData) {
+  const currentPassword = formData.get("currentPassword") as string;
+  const newPassword = formData.get("newPassword") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return { error: "All fields are required" };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { error: "New passwords do not match" };
+  }
+
+  if (newPassword.length < 8) {
+    return { error: "Password must be at least 8 characters" };
+  }
+
+  const session = await getUserSession();
+  if (!session) return { error: "Not logged in" };
+
+  // Verify current password
+  const valid = await verifyPassword(session.user.passwordHash, currentPassword);
+  if (!valid) return { error: "Incorrect current password" };
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await db.update(users)
+    .set({ passwordHash })
+    .where(eq(users.id, session.userId));
+  
+  return { success: true };
 }

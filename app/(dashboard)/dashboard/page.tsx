@@ -7,7 +7,7 @@ import { groupMembers, groups } from "@/db/schema";
 import { getUserSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { CreateGroupDialog } from "@/components/create-group-dialog";
-import { UpdateUsernameForm } from "@/components/update-username-form";
+import { Button } from "@/components/ui/button";
 
 export default async function DashboardPage() {
   const session = await getUserSession();
@@ -28,19 +28,14 @@ export default async function DashboardPage() {
     <>
       <SiteHeader user={session.user} />
       <main className="container mx-auto max-w-4xl py-8 px-4 space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-slate-500">Manage your profile and trips</p>
-        </div>
-
-        <div className="rounded-lg border p-6 space-y-4 bg-white">
-          <div>
-            <h2 className="text-lg font-semibold">Profile</h2>
-            <p className="text-sm text-slate-500">
-              Update your personal information
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-slate-500">Manage your trips</p>
           </div>
-          <UpdateUsernameForm initialUsername={session.user.username || ""} />
+          <Link href="/dashboard/profile">
+            <Button variant="outline">Manage Profile</Button>
+          </Link>
         </div>
 
         <div className="space-y-4">
