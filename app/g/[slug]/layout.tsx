@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { SiteHeader } from "@/components/site-header";
 import { db } from "@/db";
 import { groups, groupMembers } from "@/db/schema";
-import { getMemberSession } from "@/lib/session";
+import { getCurrentMember, getUserSession } from "@/lib/session";
 
 export default async function GroupLayout({
   children,
@@ -20,13 +20,13 @@ export default async function GroupLayout({
 
   if (!group) notFound();
 
-  const session = await getMemberSession(group.id);
-  const member = session?.memberId
-    ? await db.query.groupMembers.findFirst({
-        where: eq(groupMembers.id, session.memberId),
-      })
-    : null;
+  const member = await getCurrentMember(group.id);
   const isAdmin = !!member?.isAdmin;
+
+  const userSession = await getUserSession();
+  const user = userSession?.user
+    ? { email: userSession.user.email, username: userSession.user.username }
+    : null;
 
   return (
     <>
@@ -35,6 +35,7 @@ export default async function GroupLayout({
         groupSlug={group.slug}
         isAdmin={isAdmin}
         groupId={group.id}
+        user={user}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 md:px-6 md:py-12">
         {children}

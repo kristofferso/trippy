@@ -15,7 +15,7 @@ import { CommentForm } from "@/components/comment-form";
 import { CommentList, type CommentWithAuthor } from "@/components/comment-list";
 import { db } from "@/db";
 import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
-import { getMemberSession } from "@/lib/session";
+import { getCurrentMember, getMemberSession } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
 
 export default async function PostPage({
@@ -30,22 +30,17 @@ export default async function PostPage({
   });
   if (!group) notFound();
 
-  let session = await getMemberSession(group.id);
-  // if (!session && !group.passwordHash) {
-  //   session = await createMemberSession(group.id, null);
-  // }
-  if (group.passwordHash && !session) {
+  const member = await getCurrentMember(group.id);
+  // We still check for a guest session cookie to handle the "password entered but no name set" state
+  const session = await getMemberSession(group.id);
+
+  if (group.passwordHash && !member && !session) {
     return <PasswordGate slug={group.slug} name={group.name} />;
   }
 
   const post = await db.query.posts.findFirst({ where: eq(posts.id, postId) });
   if (!post || post.groupId !== group.id) notFound();
 
-  const member = session?.memberId
-    ? await db.query.groupMembers.findFirst({
-        where: eq(groupMembers.id, session.memberId),
-      })
-    : null;
   const isAdmin = !!member?.isAdmin;
 
   const reactionRows = await db

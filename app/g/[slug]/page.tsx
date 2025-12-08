@@ -13,8 +13,8 @@ import { PasswordGate } from "@/components/password-gate";
 import { NameDialog } from "@/components/name-dialog";
 import { deletePost } from "@/app/actions";
 import { db } from "@/db";
-import { comments, groupMembers, groups, posts, reactions } from "@/db/schema";
-import { getMemberSession, MemberSession } from "@/lib/session";
+import { comments, groups, posts, reactions } from "@/db/schema";
+import { getCurrentMember, getMemberSession } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
 
 export default async function GroupFeedPage({
@@ -28,17 +28,14 @@ export default async function GroupFeedPage({
   });
   if (!group) notFound();
 
-  let session = (await getMemberSession(group.id)) as MemberSession | null;
+  const member = await getCurrentMember(group.id);
+  // We still check for a guest session cookie to handle the "password entered but no name set" state
+  const session = await getMemberSession(group.id);
 
-  if (group.passwordHash && !session) {
+  if (group.passwordHash && !member && !session) {
     return <PasswordGate slug={group.slug} name={group.name} />;
   }
 
-  const member = session?.memberId
-    ? await db.query.groupMembers.findFirst({
-        where: eq(groupMembers.id, session.memberId),
-      })
-    : null;
   const isAdmin = !!member?.isAdmin;
 
   const postList = await db.query.posts.findMany({
