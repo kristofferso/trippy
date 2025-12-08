@@ -1,17 +1,15 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
-import { FormEvent, useRef, useState, useTransition } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Image as ImageIcon,
   Loader2,
   Video as VideoIcon,
   X,
-  Plus,
   Upload,
 } from "lucide-react";
-import Image from "next/image";
 
 import { createPost, updatePost } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -30,6 +28,7 @@ type MediaItem = {
   thumbnailFile?: File;
   previewUrl: string;
   isUploading?: boolean;
+  error?: string;
 };
 
 interface PostFormProps {
@@ -46,8 +45,12 @@ interface PostFormProps {
 export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const [mediaItems, setMediaItems] = useState<MediaItem[]>(
     initialData?.media.map((m, i) => ({
@@ -58,6 +61,59 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
       previewUrl: m.url, // For existing video, use url as preview (poster not perfect but ok) or thumbnailUrl
     })) || []
   );
+
+  const uploadUrl = `/api/upload?groupId=${groupId}`;
+
+  const uploadMedia = async (
+    id: string,
+    file: File,
+    thumbnailFile?: File
+  ) => {
+    try {
+      let thumbnailUrl: string | undefined;
+
+      if (thumbnailFile) {
+        const thumbUpload = await upload(thumbnailFile.name, thumbnailFile, {
+          access: "public",
+          handleUploadUrl: uploadUrl,
+        });
+        thumbnailUrl = thumbUpload.url;
+      }
+
+      const fileUpload = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: uploadUrl,
+      });
+
+      setMediaItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                url: fileUpload.url,
+                thumbnailUrl,
+                isUploading: false,
+                error: undefined,
+              }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error("Failed to upload media", error);
+      setMediaItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                isUploading: false,
+                error: "Upload failed",
+              }
+            : item
+        )
+      );
+      setMessage("Failed to upload media. Please try again.");
+    }
+  };
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.length) {
@@ -89,9 +145,16 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
           file,
           previewUrl,
           thumbnailFile,
+          isUploading: true,
         });
       }
       setMediaItems((prev) => [...prev, ...newItems]);
+
+      for (const item of newItems) {
+        if (item.file) {
+          uploadMedia(item.id, item.file, item.thumbnailFile);
+        }
+      }
 
       // Reset input
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -116,86 +179,64 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
     const title = formData.get("title")?.toString() || null;
     const body = formData.get("body")?.toString() || null;
 
-    startTransition(async () => {
-      try {
-        const uploadUrl = `/api/upload?groupId=${groupId}`;
-        const finalMedia: {
-          type: "image" | "video";
-          url: string;
-          thumbnailUrl?: string;
-        }[] = [];
+    if (mediaItems.some((item) => item.isUploading)) {
+      setMessage("Please wait for all uploads to finish.");
+      return;
+    }
 
-        // Upload new files
-        for (const item of mediaItems) {
-          if (item.url) {
-            // Existing item
-            finalMedia.push({
-              type: item.type,
-              url: item.url,
-              thumbnailUrl: item.thumbnailUrl,
-            });
-          } else if (item.file) {
-            // New item
-            let thumbnailUrl = item.thumbnailUrl;
+    if (mediaItems.some((item) => !item.url)) {
+      setMessage("Some media failed to upload. Please remove or retry.");
+      return;
+    }
 
-            // Upload thumbnail if exists
-            if (item.thumbnailFile) {
-              const thumbUpload = await upload(
-                item.thumbnailFile.name,
-                item.thumbnailFile,
-                {
-                  access: "public",
-                  handleUploadUrl: uploadUrl,
-                }
-              );
-              thumbnailUrl = thumbUpload.url;
-            }
+    setIsSubmitting(true);
 
-            // Upload main file
-            const fileUpload = await upload(item.file.name, item.file, {
-              access: "public",
-              handleUploadUrl: uploadUrl,
-            });
+    try {
+      const finalMedia = mediaItems
+        .filter((item) => item.url)
+        .map((item) => ({
+          type: item.type,
+          url: item.url as string,
+          thumbnailUrl: item.thumbnailUrl,
+        }));
 
-            finalMedia.push({
-              type: item.type,
-              url: fileUpload.url,
-              thumbnailUrl,
-            });
-          }
-        }
-
-        let result;
-        if (initialData?.id) {
-          result = await updatePost(initialData.id, title, body, finalMedia);
-        } else {
-          result = await createPost(
-            title,
-            body,
-            null, // legacy videoUrl
-            null, // legacy imageUrls
-            groupId,
-            null, // legacy thumbnailUrl
-            finalMedia // new media items
-          );
-        }
-
-        if (result.error) {
-          setMessage(result.error || "Failed to save post");
-          return;
-        }
-
-        router.refresh();
-        if (initialData?.id) {
-          router.push(`/g/${groupSlug}/post/${initialData.id}`);
-        } else {
-          router.push(`/g/${groupSlug}`);
-        }
-      } catch (error) {
-        console.error(error);
-        setMessage("Something went wrong");
+      let result;
+      if (initialData?.id) {
+        result = await updatePost(initialData.id, title, body, finalMedia);
+      } else {
+        result = await createPost(
+          title,
+          body,
+          null, // legacy videoUrl
+          null, // legacy imageUrls
+          groupId,
+          null, // legacy thumbnailUrl
+          finalMedia // new media items
+        );
       }
-    });
+
+      if (result.error) {
+        setMessage(result.error || "Failed to save post");
+        return;
+      }
+
+      const successMessage = initialData ? "Post updated" : "Post created";
+      setToast({ message: successMessage, type: "success" });
+
+      const targetUrl = initialData
+        ? `/g/${groupSlug}/post/${initialData.id}`
+        : `/g/${groupSlug}`;
+
+      setTimeout(() => {
+        router.refresh();
+        router.push(targetUrl);
+      }, 400);
+    } catch (error) {
+      console.error(error);
+      setMessage("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -276,6 +317,18 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
                 >
                   <X className="h-4 w-4" />
                 </button>
+
+                {item.isUploading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : null}
+
+                {item.error ? (
+                  <div className="absolute inset-x-0 bottom-0 bg-red-600/80 p-1 text-center text-xs text-white">
+                    Upload failed
+                  </div>
+                ) : null}
               </div>
             ))}
 
@@ -305,8 +358,13 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
           <Button variant="ghost" type="button" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? (
+          <Button
+            type="submit"
+            disabled={
+              isSubmitting || mediaItems.some((item) => item.isUploading)
+            }
+          >
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {initialData ? "Updating..." : "Posting..."}
@@ -319,6 +377,18 @@ export function PostForm({ groupId, groupSlug, initialData }: PostFormProps) {
           </Button>
         </div>
       </div>
+
+      {toast ? (
+        <div
+          className={cn(
+            "fixed bottom-6 right-6 rounded-md px-4 py-3 shadow-lg",
+            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          )}
+          role="status"
+        >
+          {toast.message}
+        </div>
+      ) : null}
     </form>
   );
 }
