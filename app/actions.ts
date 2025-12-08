@@ -3,6 +3,7 @@
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { comments, groupMembers, groups, posts, reactions, users } from "@/db/schema";
@@ -120,7 +121,7 @@ export async function createGroup(
     .insert(groupMembers)
     .values({
       groupId: inserted.id,
-      displayName: userSession.user.username, // Use username as default display name
+      displayName: userSession.user.username || userSession.user.email.split("@")[0], // Use username or email prefix
       isAdmin: true,
       userId: userSession.userId,
     })
@@ -299,34 +300,47 @@ export async function getGroupMembers(groupId: string) {
     .orderBy(desc(groupMembers.createdAt));
 }
 
+const authSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export async function registerAction(formData: FormData) {
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
+  const data = Object.fromEntries(formData);
+  const parsed = authSchema.safeParse(data);
+
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0].message };
+  }
   
-  if (!username || !password) return { error: "Username and password required" };
-  if (password.length < 8) return { error: "Password too short" };
+  const { email, password } = parsed.data;
   
   const existing = await db.query.users.findFirst({
-    where: eq(users.username, username),
+    where: eq(users.email, email),
   });
   
-  if (existing) return { error: "Username taken" };
+  if (existing) return { error: "Email already registered" };
   
   const passwordHash = await hashPassword(password);
-  const [user] = await db.insert(users).values({ username, passwordHash }).returning();
+  const [user] = await db.insert(users).values({ email, passwordHash }).returning();
   
   await createUserSession(user.id);
   return { success: true };
 }
 
 export async function loginAction(formData: FormData) {
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
-  
-  if (!username || !password) return { error: "Username and password required" };
+  const data = Object.fromEntries(formData);
+  // We can loosen validation for login if we want, but email format check is good
+  const parsed = authSchema.safeParse(data);
+
+  if (!parsed.success) {
+    return { error: "Invalid email or password" };
+  }
+
+  const { email, password } = parsed.data;
   
   const user = await db.query.users.findFirst({
-    where: eq(users.username, username),
+    where: eq(users.email, email),
   });
   
   if (!user) return { error: "Invalid credentials" };
@@ -341,4 +355,26 @@ export async function loginAction(formData: FormData) {
 export async function logoutAction() {
   await logoutUser();
   redirect("/login");
+}
+
+export async function updateUsernameAction(formData: FormData) {
+  const username = formData.get("username") as string;
+  
+  if (!username || username.length < 2) {
+    return { error: "Username must be at least 2 characters" };
+  }
+
+  const session = await getUserSession();
+  if (!session) return { error: "Not logged in" };
+
+  try {
+    await db.update(users)
+      .set({ username })
+      .where(eq(users.id, session.userId));
+    
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    return { error: "Username already taken" };
+  }
 }

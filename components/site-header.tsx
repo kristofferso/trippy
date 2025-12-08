@@ -30,7 +30,7 @@ export function SiteHeader({
   groupSlug?: string;
   isAdmin?: boolean;
   groupId?: string;
-  user?: { username: string } | null;
+  user?: { email: string; username?: string | null } | null;
 }) {
   const pathname = usePathname();
   const isPostPage = pathname?.includes("/post/");
@@ -71,10 +71,10 @@ export function SiteHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          {groupId && (
+        {groupId && (
             <>
-              <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
-              {isAdmin && <NewPostDialog />}
+            <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
+            {isAdmin && <NewPostDialog />}
             </>
           )}
 
@@ -85,7 +85,7 @@ export function SiteHeader({
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
                     <span className="text-sm font-medium text-slate-600">
-                      {user.username[0].toUpperCase()}
+                      {(user.username || user.email)[0].toUpperCase()}
                     </span>
                   </div>
                 </Button>

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { groupMembers } from "@/db/schema";
-import { getSession } from "@/lib/session";
+import { getMemberSession } from "@/lib/session";
 
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async () => {
-        const session = await getSession();
+        const session = await getMemberSession();
         if (!session?.memberId) {
           throw new Error("Not signed in");
         }

@@ -4,7 +4,7 @@ import { LandingPageContent } from "@/components/landing-page-content";
 
 export default async function LandingPage() {
   const session = await getUserSession();
-  const user = session?.user ? { username: session.user.username } : null;
+  const user = session?.user ? { email: session.user.email } : null;
 
   return (
     <>

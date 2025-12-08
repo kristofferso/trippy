@@ -112,16 +112,14 @@ export default async function PostPage({
 
             {post.imageUrls && post.imageUrls.length > 0 && (
               <Carousel className="w-full">
-                <CarouselContent>
+                <CarouselContent className="rounded-2xl">
                   {post.imageUrls.map((url, index) => (
                     <CarouselItem key={index}>
-                      <div className="overflow-hidden rounded-xl bg-slate-100 shadow-2xl ring-1 ring-slate-900/10">
-                        <img
-                          src={url}
-                          alt={`Photo ${index + 1}`}
-                          className="aspect-[4/3] w-full object-cover"
-                        />
-                      </div>
+                      <img
+                        src={url}
+                        alt={`Photo ${index + 1}`}
+                        className="aspect-square w-full object-cover"
+                      />
                     </CarouselItem>
                   ))}
                 </CarouselContent>

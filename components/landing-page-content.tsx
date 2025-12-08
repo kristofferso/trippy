@@ -11,7 +11,11 @@ import { Input } from "@/components/ui/input";
 import { CreateGroupDialog } from "@/components/create-group-dialog";
 import hero from "@/public/hero.png";
 
-export function LandingPageContent({ user }: { user: { username: string } | null }) {
+export function LandingPageContent({
+  user,
+}: {
+  user: { email: string } | null;
+}) {
   const router = useRouter();
   const [slug, setSlug] = useState("");
 
@@ -69,9 +73,7 @@ export function LandingPageContent({ user }: { user: { username: string } | null
               e.g.{" "}
               <span className="font-medium text-slate-600">iceland-2025</span>{" "}
               or{" "}
-              <span className="font-medium text-slate-600">
-                trippiest-trip
-              </span>
+              <span className="font-medium text-slate-600">trippiest-trip</span>
             </p>
           </form>
 
@@ -85,22 +87,36 @@ export function LandingPageContent({ user }: { user: { username: string } | null
 
           {user ? (
             <div className="grid gap-2">
-               <Button asChild variant="outline" className="w-full h-12 rounded-full border-slate-200 bg-white/50 text-base font-medium text-slate-700 hover:bg-white hover:text-slate-900">
-                  <Link href="/dashboard">Go to Dashboard</Link>
-               </Button>
-               <div className="flex justify-center">
-                 <CreateGroupDialog trigger={
-                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900">
-                        <Plus className="mr-2 h-4 w-4" /> Start a new trip here
+              <Button
+                asChild
+                variant="outline"
+                className="w-full h-12 rounded-full border-slate-200 bg-white/50 text-base font-medium text-slate-700 hover:bg-white hover:text-slate-900"
+              >
+                <Link href="/dashboard">Go to Dashboard</Link>
+              </Button>
+              <div className="flex justify-center">
+                <CreateGroupDialog
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-500 hover:text-slate-900"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Start a new trip
                     </Button>
-                 } />
-               </div>
+                  }
+                />
+              </div>
             </div>
           ) : (
-            <Button asChild variant="outline" className="w-full h-12 rounded-full border-slate-200 bg-white/50 text-base font-medium text-slate-700 hover:bg-white hover:text-slate-900">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-12 rounded-full border-slate-200 bg-white/50 text-base font-medium text-slate-700 hover:bg-white hover:text-slate-900"
+            >
               <Link href="/register">
-                 <Plus className="mr-2 h-4 w-4" />
-                 Start a new trip
+                <Plus className="mr-2 h-4 w-4" />
+                Start a new trip
               </Link>
             </Button>
           )}
@@ -124,4 +140,3 @@ export function LandingPageContent({ user }: { user: { username: string } | null
     </main>
   );
 }
-
