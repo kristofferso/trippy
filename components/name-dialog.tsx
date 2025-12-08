@@ -78,7 +78,7 @@ export function NameDialog({ groupId }: { groupId?: string }) {
               id="display-name"
               value={displayName}
               onChange={(e) => setDisplayNameValue(e.target.value)}
-              placeholder="Trippi MacTripface"
+              placeholder="Your name"
             />
           </div>
           <div className="space-y-1">

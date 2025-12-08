@@ -1,6 +1,6 @@
 "use server";
 
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -424,6 +424,27 @@ export async function getGroupMembers(groupId: string) {
     .from(groupMembers)
     .where(eq(groupMembers.groupId, groupId))
     .orderBy(desc(groupMembers.createdAt));
+}
+
+export async function getReactionDetails(postId: string, emoji: string | null) {
+  const filters = [eq(reactions.postId, postId)];
+  if (emoji) {
+    filters.push(eq(reactions.emoji, emoji));
+  }
+
+  const reactionList = await db
+    .select({
+      id: reactions.id,
+      displayName: groupMembers.displayName,
+      createdAt: reactions.createdAt,
+      emoji: reactions.emoji,
+    })
+    .from(reactions)
+    .innerJoin(groupMembers, eq(reactions.memberId, groupMembers.id))
+    .where(and(...filters))
+    .orderBy(desc(reactions.createdAt));
+
+  return reactionList;
 }
 
 const authSchema = z.object({

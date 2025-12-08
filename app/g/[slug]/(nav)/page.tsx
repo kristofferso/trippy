@@ -177,10 +177,10 @@ export default async function GroupFeedPage({
                     )}
 
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-100" />
 
                     {/* Stats Overlay */}
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white opacity-100">
                       <div className="flex items-center gap-3 text-xs font-medium">
                         {commentCounts[post.id] ? (
                           <div className="flex items-center gap-1">
@@ -212,7 +212,7 @@ export default async function GroupFeedPage({
                 </a>
 
                 {isAdmin && (
-                  <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute top-2 right-2 opacity-100">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

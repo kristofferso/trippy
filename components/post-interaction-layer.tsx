@@ -3,6 +3,16 @@
 import { useMemo, useState, useTransition, useOptimistic } from "react";
 import { MessageCircle, Smile, Plus } from "lucide-react";
 import { EmojiRain } from "@/components/emoji-rain";
+import { ReactionListDialog } from "@/components/reaction-list-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Drawer,
   DrawerContent,
@@ -77,6 +87,16 @@ export function PostInteractionLayer({
   const [reactionDrawerOpen, setReactionDrawerOpen] = useState(false);
   const [activeRainEmoji, setActiveRainEmoji] = useState<string | null>(null);
 
+  // State for Reaction List Dialog
+  const [reactionListOpen, setReactionListOpen] = useState(false);
+  const [selectedEmojiForList, setSelectedEmojiForList] = useState<
+    string | null
+  >(null);
+
+  // State for Custom Emoji Dialog
+  const [customEmojiDialogOpen, setCustomEmojiDialogOpen] = useState(false);
+  const [customEmoji, setCustomEmoji] = useState("");
+
   const activeReactions = useMemo(() => {
     return Object.entries(optimisticCounts)
       .filter(([_, count]) => count > 0)
@@ -90,6 +110,8 @@ export function PostInteractionLayer({
 
   const handleReact = (emoji: string) => {
     setReactionDrawerOpen(false);
+    setCustomEmojiDialogOpen(false);
+    setCustomEmoji("");
 
     // Trigger rain
     setActiveRainEmoji(null);
@@ -138,18 +160,29 @@ export function PostInteractionLayer({
           {activeReactions.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {activeReactions.map(([emoji, count]) => (
-                <div
+                <button
                   key={emoji}
-                  className="flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm"
+                  onClick={() => {
+                    setSelectedEmojiForList(emoji);
+                    setReactionListOpen(true);
+                  }}
+                  className="flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/60 transition-colors"
                 >
                   <span className="text-sm">{emoji}</span>
                   <span>{count}</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <ReactionListDialog
+        open={reactionListOpen}
+        onOpenChange={setReactionListOpen}
+        postId={postId}
+        emoji={selectedEmojiForList}
+      />
 
       {/* Right Sidebar Actions */}
       <div className="absolute bottom-20 right-2 z-20 flex flex-col items-center gap-6">
@@ -196,6 +229,61 @@ export function PostInteractionLayer({
                     {emoji}
                   </button>
                 ))}
+
+                <Dialog
+                  open={customEmojiDialogOpen}
+                  onOpenChange={setCustomEmojiDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <button className="flex aspect-square items-center justify-center rounded-xl bg-slate-100 text-2xl hover:bg-slate-200 active:scale-90 transition-transform text-slate-500">
+                      <Plus className="h-6 w-6" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add Custom Reaction</DialogTitle>
+                      <DialogDescription>
+                        Enter a single emoji to react to this post.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (customEmoji) {
+                          handleReact(customEmoji);
+                        }
+                      }}
+                      className="flex items-center gap-4 py-4"
+                    >
+                      <div className="relative flex-1">
+                        <Input
+                          id="emoji"
+                          className="text-center text-4xl h-20"
+                          value={customEmoji}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const chars = [...val];
+                            if (chars.length > 0) {
+                              setCustomEmoji(chars[chars.length - 1]);
+                            } else {
+                              setCustomEmoji("");
+                            }
+                          }}
+                          placeholder="🔥"
+                          autoFocus
+                          maxLength={2}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={!customEmoji || pending}
+                      >
+                        React
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </DrawerContent>

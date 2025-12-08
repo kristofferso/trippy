@@ -76,7 +76,7 @@ export function PasswordGate({ slug, name }: { slug: string; name: string }) {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Trippi MacTripface"
+                  placeholder="Your name"
                   className="h-10 pl-10 bg-slate-50 border-0 focus-visible:ring-1"
                 />
               </div>
