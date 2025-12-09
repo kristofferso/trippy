@@ -24,9 +24,14 @@ export default async function DashboardPage() {
     .innerJoin(groups, eq(groups.id, groupMembers.groupId))
     .where(eq(groupMembers.userId, session.userId));
 
+  const user = {
+    email: session.user.email,
+    username: session.user.username,
+  };
+
   return (
     <>
-      <SiteHeader user={session.user} />
+      <SiteHeader user={user} />
       <main className="container mx-auto max-w-4xl py-8 px-4 space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-2">

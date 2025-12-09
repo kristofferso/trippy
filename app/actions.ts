@@ -128,24 +128,24 @@ export async function createGroup(
   if (existing) return { error: "Slug already taken" };
 
   const passwordHash = password ? await hashPassword(password) : null;
-  const [inserted] = await db
-    .insert(groups)
-    .values({ slug, name, passwordHash })
-    .returning();
+  
+  return await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(groups)
+      .values({ slug, name, passwordHash })
+      .returning();
 
-  const [member] = await db
-    .insert(groupMembers)
-    .values({
-      groupId: inserted.id,
-      displayName: userSession.user.username || userSession.user.email.split("@")[0], // Use username or email prefix
-      isAdmin: true,
-      userId: userSession.userId,
-    })
-    .returning();
+    await tx
+      .insert(groupMembers)
+      .values({
+        groupId: inserted.id,
+        displayName: userSession.user.username || userSession.user.email.split("@")[0], // Use username or email prefix
+        isAdmin: true,
+        userId: userSession.userId,
+      });
 
-  // No need to create member session cookie for logged in user creator
-  // await createMemberSession(inserted.id, member.id);
-  return { success: true, groupId: inserted.id };
+    return { success: true, groupId: inserted.id };
+  });
 }
 
 export async function setDisplayName(
@@ -235,6 +235,24 @@ export async function createPost(
     return { error: "Admins only" };
   }
 
+  // Validate URLs
+  if (videoUrl) {
+    const parsed = z.string().url().safeParse(videoUrl);
+    if (!parsed.success) return { error: "Invalid video URL" };
+  }
+  if (imageUrls) {
+    const parsed = z.array(z.string().url()).safeParse(imageUrls);
+    if (!parsed.success) return { error: "Invalid image URLs" };
+  }
+  if (mediaItems) {
+    const parsed = z.array(z.object({
+      type: z.enum(['image', 'video']),
+      url: z.string().url(),
+      thumbnailUrl: z.string().url().optional()
+    })).safeParse(mediaItems);
+    if (!parsed.success) return { error: "Invalid media items" };
+  }
+
   let media: { type: 'image' | 'video'; url: string; thumbnailUrl?: string }[] = mediaItems || [];
   
   if (media.length === 0) {
@@ -280,6 +298,14 @@ export async function updatePost(
 
   const admin = await ensureAdmin(post.groupId);
   if (!admin) return { error: "Admins only" };
+
+  // Validate URLs
+  const parsed = z.array(z.object({
+    type: z.enum(['image', 'video']),
+    url: z.string().url(),
+    thumbnailUrl: z.string().url().optional()
+  })).safeParse(media);
+  if (!parsed.success) return { error: "Invalid media items" };
 
   // Keep legacy fields in sync roughly
   const videoUrl = media.find(m => m.type === 'video')?.url || null;

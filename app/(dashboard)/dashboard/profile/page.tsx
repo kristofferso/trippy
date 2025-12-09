@@ -14,9 +14,14 @@ export default async function ProfilePage() {
   const session = await getUserSession();
   if (!session) redirect("/login");
 
+  const user = {
+    email: session.user.email,
+    username: session.user.username,
+  };
+
   return (
     <>
-      <SiteHeader user={session.user} />
+      <SiteHeader user={user} />
       <main className="container mx-auto max-w-2xl py-8 px-4 space-y-8">
         <div className="space-y-2">
           <Link 

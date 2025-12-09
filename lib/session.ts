@@ -19,6 +19,7 @@ async function setMemberSessionCookie(id: string) {
   store.set(MEMBER_SESSION_COOKIE, id, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
   });
 }
@@ -89,6 +90,7 @@ export async function createUserSession(userId: string) {
   store.set(USER_SESSION_COOKIE, id, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
   });
 
