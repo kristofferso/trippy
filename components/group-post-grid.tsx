@@ -13,6 +13,31 @@ import { deletePost } from "@/app/actions";
 import { db } from "@/db";
 import { comments, posts, reactions } from "@/db/schema";
 
+function formatTimeAgo(date: Date) {
+  const now = new Date();
+  const diffInSeconds = Math.max(
+    0,
+    Math.floor((now.getTime() - date.getTime()) / 1000)
+  );
+
+  if (diffInSeconds < 60) return "just now";
+
+  const minutes = Math.floor(diffInSeconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
 export async function GroupPostGrid({
   groupId,
   groupSlug,
@@ -100,14 +125,22 @@ export async function GroupPostGrid({
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {postList.map((post) => {
           const preview = getPreview(post);
+          const timeAgo = formatTimeAgo(post.createdAt);
+          const isNew =
+            new Date().getTime() - post.createdAt.getTime() <
+            24 * 60 * 60 * 1000;
 
           return (
             <article key={post.id} className="group relative">
-              <Link
-                href={`/g/${groupSlug}/post/${post.id}`}
-                className="block h-full overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-900/5 transition-transform hover:scale-[1.02]"
-              >
-                <div className="aspect-square relative w-full overflow-hidden bg-slate-100">
+              <div className="relative h-full overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-900/5 transition-transform hover:scale-[1.02]">
+                <Link
+                  href={`/g/${groupSlug}/post/${post.id}`}
+                  className="absolute inset-0 z-10"
+                >
+                  <span className="sr-only">View post</span>
+                </Link>
+
+                <div className="aspect-square relative w-full h-full bg-slate-100 pointer-events-none">
                   {preview.type === "video" ? (
                     <>
                       {preview.thumbnail ? (
@@ -189,46 +222,59 @@ export async function GroupPostGrid({
                     </div>
                   </div>
                 </div>
-              </Link>
 
-              {isAdmin && (
-                <div className="absolute top-2 right-2 opacity-100">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">More options</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={`/g/${groupSlug}/post/${post.id}/edit`}
-                          className="flex w-full cursor-pointer items-center"
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Post
-                        </Link>
-                      </DropdownMenuItem>
-                      <form action={handleDeletePost.bind(null, post.id)}>
-                        <DropdownMenuItem asChild>
-                          <button
-                            type="submit"
-                            className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
+                <div className="absolute top-0 left-0 right-0 p-2 flex justify-between items-start gap-2 z-20 pointer-events-none flex-wrap">
+                  <div className="flex items-center gap-2 pointer-events-none">
+                    <div className="rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {timeAgo}
+                    </div>
+                    {isNew && (
+                      <div className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        NEW
+                      </div>
+                    )}
+                  </div>
+
+                  {isAdmin && (
+                    <div className="pointer-events-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Post
-                          </button>
-                        </DropdownMenuItem>
-                      </form>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/g/${groupSlug}/post/${post.id}/edit`}
+                              className="flex w-full cursor-pointer items-center"
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Post
+                            </Link>
+                          </DropdownMenuItem>
+                          <form action={handleDeletePost.bind(null, post.id)}>
+                            <DropdownMenuItem asChild>
+                              <button
+                                type="submit"
+                                className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Post
+                              </button>
+                            </DropdownMenuItem>
+                          </form>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </article>
           );
         })}
@@ -236,4 +282,3 @@ export async function GroupPostGrid({
     </div>
   );
 }
-
