@@ -61,7 +61,7 @@ export async function PostDetailContent({
                     {item.type === "video" ? (
                       <VideoPlayer
                         src={item.url}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     ) : (
                       <Image

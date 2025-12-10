@@ -155,8 +155,7 @@ export function PostInteractionLayer({
     });
   };
 
-  const isMediaPost =
-    !!post.videoUrl || (post.imageUrls && post.imageUrls.length > 0);
+  const isMediaPost = !!post?.media && post?.media.length > 0;
 
   return (
     <>
