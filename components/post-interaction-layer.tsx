@@ -83,6 +83,11 @@ export function PostInteractionLayer({
     })
   );
 
+  const [optimisticComments, addOptimisticComment] = useOptimistic(
+    comments,
+    (state, newComment: CommentWithAuthor) => [newComment, ...state]
+  );
+
   const [pending, startTransition] = useTransition();
   const [reactionDrawerOpen, setReactionDrawerOpen] = useState(false);
   const [activeRainEmoji, setActiveRainEmoji] = useState<string | null>(null);
@@ -293,26 +298,26 @@ export function PostInteractionLayer({
                   <MessageCircle className="h-7 w-7 fill-white/90" />
                 </div>
                 <span className="text-xs font-bold text-white shadow-black drop-shadow-md">
-                  {comments.length}
+                  {optimisticComments.length}
                 </span>
               </div>
             </DrawerTrigger>
-            <DrawerContent className="fixed bottom-0 left-0 right-0 max-h-[85vh] outline-none">
+            <DrawerContent className="h-screen">
               <div className="mx-auto w-full max-w-md h-full flex flex-col">
-                <DrawerHeader className="border-b pb-4">
-                  <DrawerTitle className="text-center">
-                    Comments ({comments.length})
-                  </DrawerTitle>
-                </DrawerHeader>
                 <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
                   <CommentList
-                    comments={comments}
+                    comments={optimisticComments}
                     isAdmin={isAdmin}
                     postId={postId}
+                    onOptimisticAdd={addOptimisticComment}
                   />
                 </div>
-                <div className="border-t p-4 pb-8 bg-white">
-                  <CommentForm postId={postId} autoFocus={false} />
+                <div className="p-4 pb-8">
+                  <CommentForm
+                    postId={postId}
+                    autoFocus={false}
+                    onOptimisticAdd={addOptimisticComment}
+                  />
                 </div>
               </div>
             </DrawerContent>

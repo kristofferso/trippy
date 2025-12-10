@@ -34,9 +34,15 @@ type Props = {
   comments: CommentWithAuthor[];
   isAdmin: boolean;
   postId: string;
+  onOptimisticAdd?: (comment: CommentWithAuthor) => void;
 };
 
-export function CommentList({ comments, isAdmin, postId }: Props) {
+export function CommentList({
+  comments,
+  isAdmin,
+  postId,
+  onOptimisticAdd,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -134,6 +140,7 @@ export function CommentList({ comments, isAdmin, postId }: Props) {
                 parentId={comment.id}
                 onSuccess={() => setReplyingTo(null)}
                 autoFocus
+                onOptimisticAdd={onOptimisticAdd}
               />
             </div>
           )}
