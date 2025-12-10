@@ -1,5 +1,5 @@
 import { count, desc, eq, inArray } from "drizzle-orm";
-import { Video, MessageCircle, MoreVertical, Trash2, Edit } from "lucide-react";
+import { Video, MessageCircle, MoreVertical, Trash2, Edit, User } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,13 @@ export async function GroupPostGrid({
   const postList = await db.query.posts.findMany({
     where: eq(posts.groupId, groupId),
     orderBy: desc(posts.createdAt),
+    with: {
+      author: {
+        with: {
+          user: true,
+        },
+      },
+    },
   });
   const postIds = postList.map((p) => p.id);
 
@@ -129,6 +136,8 @@ export async function GroupPostGrid({
           const isNew =
             new Date().getTime() - post.createdAt.getTime() <
             24 * 60 * 60 * 1000;
+          const authorAvatar = post.author?.user?.avatarUrl;
+          const authorName = post.author?.displayName;
 
           return (
             <article key={post.id} className="group relative">
@@ -193,33 +202,90 @@ export async function GroupPostGrid({
                   <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-100" />
 
                   {/* Stats Overlay */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white opacity-100">
-                    <div className="flex items-center gap-3 text-xs font-medium">
-                      {commentCounts[post.id] ? (
-                        <div className="flex items-center gap-1">
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          <span>{commentCounts[post.id]}</span>
+                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white opacity-100 z-20 pointer-events-none">
+                    <div className="flex flex-col gap-2">
+                       {/* Author Avatar */}
+                       <div className="flex items-center gap-1.5 opacity-90">
+                        <div className="h-5 w-5 rounded-full bg-white/20 overflow-hidden ring-1 ring-white/30">
+                          {authorAvatar ? (
+                            <img src={authorAvatar} alt={authorName} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center bg-slate-400">
+                              <User className="h-3 w-3 text-white" />
+                            </div>
+                          )}
                         </div>
-                      ) : null}
+                        <span className="text-[10px] font-medium truncate max-w-[80px] text-white/90 shadow-black drop-shadow-sm">
+                          {authorName}
+                        </span>
+                      </div>
 
-                      {Object.values(reactionCounts[post.id] ?? {}).reduce(
-                        (a, b) => a + b,
-                        0
-                      ) > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span>
-                            {Object.keys(reactionCounts[post.id] ?? {}).join(
-                              ""
-                            )}
-                          </span>
-                          <span>
-                            {Object.values(
-                              reactionCounts[post.id] ?? {}
-                            ).reduce((a, b) => a + b, 0)}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 text-xs font-medium">
+                        {commentCounts[post.id] ? (
+                          <div className="flex items-center gap-1">
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            <span>{commentCounts[post.id]}</span>
+                          </div>
+                        ) : null}
+
+                        {Object.values(reactionCounts[post.id] ?? {}).reduce(
+                          (a, b) => a + b,
+                          0
+                        ) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span>
+                              {Object.keys(reactionCounts[post.id] ?? {}).join(
+                                ""
+                              )}
+                            </span>
+                            <span>
+                              {Object.values(
+                                reactionCounts[post.id] ?? {}
+                              ).reduce((a, b) => a + b, 0)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {isAdmin && (
+                      <div className="pointer-events-auto">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">More options</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/g/${groupSlug}/post/${post.id}/edit`}
+                                className="flex w-full cursor-pointer items-center"
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Post
+                              </Link>
+                            </DropdownMenuItem>
+                            <form action={handleDeletePost.bind(null, post.id)}>
+                              <DropdownMenuItem asChild>
+                                <button
+                                  type="submit"
+                                  className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Post
+                                </button>
+                              </DropdownMenuItem>
+                            </form>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -234,45 +300,6 @@ export async function GroupPostGrid({
                       </div>
                     )}
                   </div>
-
-                  {isAdmin && (
-                    <div className="pointer-events-auto">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">More options</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/g/${groupSlug}/post/${post.id}/edit`}
-                              className="flex w-full cursor-pointer items-center"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Post
-                            </Link>
-                          </DropdownMenuItem>
-                          <form action={handleDeletePost.bind(null, post.id)}>
-                            <DropdownMenuItem asChild>
-                              <button
-                                type="submit"
-                                className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Post
-                              </button>
-                            </DropdownMenuItem>
-                          </form>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
                 </div>
               </div>
             </article>

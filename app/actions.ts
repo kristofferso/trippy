@@ -741,6 +741,19 @@ export async function updatePasswordAction(formData: FormData) {
   return { success: true };
 }
 
+export async function updateUserAvatarAction(avatarUrl: string | null) {
+  const session = await getUserSession();
+  if (!session) return { error: "Not logged in" };
+
+  await db
+    .update(users)
+    .set({ avatarUrl })
+    .where(eq(users.id, session.userId));
+
+  revalidatePath("/dashboard/profile");
+  return { success: true };
+}
+
 export async function updateGroup(
   groupId: string,
   name: string,

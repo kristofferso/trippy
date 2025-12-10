@@ -6,6 +6,7 @@ import { getUserSession } from "@/lib/session";
 import { SiteHeader } from "@/components/site-header";
 import { UpdateUsernameForm } from "@/components/update-username-form";
 import { UpdatePasswordForm } from "@/components/update-password-form";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,16 @@ export default async function ProfilePage() {
         </div>
 
         <div className="space-y-6">
+          <div className="rounded-lg border p-6 space-y-4 bg-white">
+            <div>
+              <h2 className="text-lg font-semibold">Avatar</h2>
+              <p className="text-sm text-slate-500">
+                Update your profile picture
+              </p>
+            </div>
+            <AvatarUpload initialUrl={session.user.avatarUrl} />
+          </div>
+
           <div className="rounded-lg border p-6 space-y-4 bg-white">
             <div>
               <h2 className="text-lg font-semibold">Account Information</h2>

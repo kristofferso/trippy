@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { groupMembers } from "@/db/schema";
-import { getCurrentMember, getMemberSession } from "@/lib/session";
+import { getCurrentMember, getMemberSession, getUserSession } from "@/lib/session";
 
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
@@ -14,24 +14,20 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload, multipart) => {
-        // Retrieve groupId from request URL or body?
-        // handleUpload doesn't easily expose custom params in the initial request to POST
-        // But the client-side `upload` function can pass query params to the `handleUploadUrl`
-        // However, the standard `handleUpload` signature expects `body` and `request`.
-        // We can parse the referer or use a query param if we update the client call.
-
-        // Alternatively, if we only have one group context per user session, `getMemberSession` works.
-        // But for admins with multiple groups, we need to know WHICH group they are uploading for.
-        // The `upload` call in client does not send groupId by default.
-
-        // Strategy:
-        // 1. Check if the user is an admin of ANY group? No, too broad.
-        // 2. We need the groupId.
-        // Let's inspect the request url for a search param `groupId`.
-
         const url = new URL(request.url);
         const groupId = url.searchParams.get("groupId");
+        const type = url.searchParams.get("type");
 
+        if (type === "avatar") {
+          const session = await getUserSession();
+          if (!session) throw new Error("Not signed in");
+          return {
+            allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+            tokenPayload: JSON.stringify({ userId: session.userId }),
+          };
+        }
+
+        // Group upload logic
         let member = null;
 
         if (groupId) {

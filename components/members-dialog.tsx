@@ -15,9 +15,20 @@ import {
 import { deleteMember, getGroupMembers, toggleAdmin } from "@/app/actions";
 import { type GroupMember } from "@/db/schema";
 
-export function MembersDialog({ groupId, isAdmin }: { groupId: string, isAdmin: boolean }) {
+export function MembersDialog({
+  groupId,
+  isAdmin,
+}: {
+  groupId: string;
+  isAdmin: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const [members, setMembers] = useState<(Pick<GroupMember, "id" | "displayName" | "isAdmin"> & { isCurrentUser?: boolean; isUser?: boolean })[]>([]);
+  const [members, setMembers] = useState<
+    (Pick<GroupMember, "id" | "displayName" | "isAdmin"> & {
+      isCurrentUser?: boolean;
+      isUser?: boolean;
+    })[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -63,7 +74,11 @@ export function MembersDialog({ groupId, isAdmin }: { groupId: string, isAdmin: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-9 gap-2 text-slate-500 hover:text-slate-900">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9 gap-2 text-slate-500 hover:text-slate-900"
+        >
           <Users className="h-4 w-4" />
           <span className="hidden sm:inline">Members</span>
         </Button>
@@ -76,17 +91,6 @@ export function MembersDialog({ groupId, isAdmin }: { groupId: string, isAdmin: 
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 p-3">
-             <div className="space-y-0.5">
-                <div className="text-sm font-medium text-slate-900">Invite people</div>
-                <div className="text-xs text-slate-500">Share this link to let others join.</div>
-             </div>
-             <Button size="sm" variant="outline" onClick={copyLink} className="h-8 gap-1.5">
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copied" : "Copy"}
-             </Button>
-          </div>
-
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
@@ -116,35 +120,57 @@ export function MembersDialog({ groupId, isAdmin }: { groupId: string, isAdmin: 
                   </div>
                   {isAdmin && !member.isCurrentUser && (
                     <div className="flex items-center">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={`h-8 w-8 ${member.isAdmin ? "text-blue-600 hover:text-blue-700" : "text-slate-400 hover:text-slate-600"} ${!member.isUser ? "opacity-30 cursor-not-allowed" : ""}`}
-                            onClick={() => member.isUser && handleToggleAdmin(member.id)}
-                            disabled={pending || !member.isUser}
-                            title={!member.isUser ? "Only registered users can be admins" : (member.isAdmin ? "Remove admin" : "Make admin")}
-                        >
-                            {member.isAdmin ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
-                            <span className="sr-only">{member.isAdmin ? "Remove admin" : "Make admin"}</span>
-                        </Button>
-                        {!member.isAdmin && (
-                            <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:text-red-600"
-                            onClick={() => handleRemoveMember(member.id)}
-                            disabled={pending}
-                            >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Remove</span>
-                            </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-8 w-8 ${
+                          member.isAdmin
+                            ? "text-blue-600 hover:text-blue-700"
+                            : "text-slate-400 hover:text-slate-600"
+                        } ${
+                          !member.isUser ? "opacity-30 cursor-not-allowed" : ""
+                        }`}
+                        onClick={() =>
+                          member.isUser && handleToggleAdmin(member.id)
+                        }
+                        disabled={pending || !member.isUser}
+                        title={
+                          !member.isUser
+                            ? "Only registered users can be admins"
+                            : member.isAdmin
+                            ? "Remove admin"
+                            : "Make admin"
+                        }
+                      >
+                        {member.isAdmin ? (
+                          <ShieldCheck className="h-4 w-4" />
+                        ) : (
+                          <Shield className="h-4 w-4" />
                         )}
+                        <span className="sr-only">
+                          {member.isAdmin ? "Remove admin" : "Make admin"}
+                        </span>
+                      </Button>
+                      {!member.isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-red-600"
+                          onClick={() => handleRemoveMember(member.id)}
+                          disabled={pending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Remove</span>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
               {members.length === 0 && !loading && (
-                 <p className="text-center text-sm text-muted-foreground">No members found.</p>
+                <p className="text-center text-sm text-muted-foreground">
+                  No members found.
+                </p>
               )}
             </div>
           )}

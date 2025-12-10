@@ -1,1 +1,1 @@
-ALTER TABLE "posts" ADD COLUMN "media" json DEFAULT '[]'::json;
+ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "media" json DEFAULT '[]'::json;
