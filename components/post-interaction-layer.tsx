@@ -34,6 +34,7 @@ import { CommentForm } from "@/components/comment-form";
 import { addReaction } from "@/app/actions";
 import { cn, formatDate } from "@/lib/utils";
 import { setNameDialogOpen } from "@/lib/store";
+import { Post } from "@/db/schema";
 
 const ALL_EMOJIS = [
   "👍",
@@ -64,13 +65,7 @@ const ALL_EMOJIS = [
 
 type Props = {
   postId: string;
-  post: {
-    title: string | null;
-    body: string | null;
-    createdAt: Date | string;
-    videoUrl: string | null;
-    imageUrls: string[] | null;
-  };
+  post: Post;
   counts: Record<string, number>;
   comments: CommentWithAuthor[];
   isAdmin: boolean;
