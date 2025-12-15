@@ -34,7 +34,7 @@ type MediaItem = {
   error?: string;
 };
 
-interface PostFormProps {
+export interface PostFormProps {
   groupId: string;
   groupSlug: string;
   initialData?: {

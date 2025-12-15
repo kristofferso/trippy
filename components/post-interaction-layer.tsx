@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  useMemo,
-  useState,
-  useTransition,
-  useOptimistic,
-  useRef,
-  useCallback,
-  useEffect,
-} from "react";
-import { MessageCircle, Smile, Plus } from "lucide-react";
+import { addReaction } from "@/app/actions";
+import { CommentForm } from "@/components/comment-form";
+import { CommentList, type CommentWithAuthor } from "@/components/comment-list";
 import { EmojiRain } from "@/components/emoji-rain";
 import { ReactionListDialog } from "@/components/reaction-list-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Drawer,
   DrawerContent,
@@ -28,13 +21,27 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
-import { CommentList, type CommentWithAuthor } from "@/components/comment-list";
-import { CommentForm } from "@/components/comment-form";
-import { addReaction } from "@/app/actions";
-import { cn, formatDate } from "@/lib/utils";
-import { setNameDialogOpen } from "@/lib/store";
+import { Input } from "@/components/ui/input";
 import { Post } from "@/db/schema";
+import { setNameDialogOpen } from "@/lib/store";
+import { cn, formatDate } from "@/lib/utils";
+import {
+  LaughIcon,
+  MessageCircle,
+  Plus,
+  Smile,
+  SmilePlus,
+  X,
+} from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 const ALL_EMOJIS = [
   "👍",
@@ -216,14 +223,7 @@ export function PostInteractionLayer({
                     pending && "opacity-70"
                   )}
                 >
-                  <Smile
-                    className={cn(
-                      "h-7 w-7",
-                      (optimisticState.counts["❤️"] || 0) > 0
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-white"
-                    )}
-                  />
+                  <Smile className="size-5" />
                 </Button>
                 <span className="text-xs font-bold text-white shadow-black drop-shadow-md">
                   {totalReactions}
@@ -254,7 +254,7 @@ export function PostInteractionLayer({
                   >
                     <DialogTrigger asChild>
                       <button className="flex aspect-square items-center justify-center rounded-xl bg-slate-100 text-2xl hover:bg-slate-200 active:scale-90 transition-transform text-slate-500">
-                        <Plus className="h-6 w-6" />
+                        <Plus className="size-5" />
                       </button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">

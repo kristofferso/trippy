@@ -78,6 +78,7 @@ export default async function GroupFeedPage({
           groupId={group.id}
           groupSlug={group.slug}
           isAdmin={isAdmin}
+          memberId={member?.id}
         />
       </Suspense>
     </div>

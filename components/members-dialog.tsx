@@ -1,8 +1,9 @@
 "use client";
 
+import { Shield, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
-import { Trash2, Users, Shield, ShieldCheck, Check, Copy } from "lucide-react";
 
+import { deleteMember, getGroupMembers, toggleAdmin } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { deleteMember, getGroupMembers, toggleAdmin } from "@/app/actions";
 import { type GroupMember } from "@/db/schema";
 
 export function MembersDialog({
@@ -85,7 +85,12 @@ export function MembersDialog({
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Members</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Members</DialogTitle>
+            <DialogTrigger asChild>
+              <X className="size-5" />
+            </DialogTrigger>
+          </div>
           <DialogDescription>
             {members.length} people in this group.
           </DialogDescription>

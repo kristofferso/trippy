@@ -7,6 +7,7 @@ import {
   timestamp,
   uuid,
   json,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -129,6 +130,24 @@ export const reactions = pgTable("reactions", {
     .notNull()
     .defaultNow(),
 });
+
+export const postViews = pgTable(
+  "post_views",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => groupMembers.id, { onDelete: "cascade" }),
+    seenAt: timestamp("seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.postId, table.memberId] }),
+  })
+);
 
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(userSessions),

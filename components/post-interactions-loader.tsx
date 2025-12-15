@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { comments, groupMembers, reactions } from "@/db/schema";
 import { PostInteractionLayer } from "@/components/post-interaction-layer";
 import { getCurrentMember } from "@/lib/session";
+import { markPostSeen } from "@/app/actions";
 
 export async function PostInteractionsLoader({
   postId,
@@ -53,6 +54,7 @@ export async function PostInteractionsLoader({
   const member = await getCurrentMember(post.groupId);
   let userReactions: string[] = [];
   if (member) {
+    await markPostSeen(postId);
     const myReactions = await db.query.reactions.findMany({
       where: and(
         eq(reactions.postId, postId),

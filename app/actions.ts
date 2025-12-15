@@ -13,6 +13,7 @@ import {
   memberSessions,
   posts,
   reactions,
+  postViews,
   users,
 } from "@/db/schema";
 import {
@@ -187,8 +188,26 @@ export async function createGroup(
       userId: userSession.userId,
     });
 
-    return { success: true, groupId: inserted.id };
+  return { success: true, groupId: inserted.id };
   });
+}
+
+export async function markPostSeen(postId: string) {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+    columns: {
+      groupId: true,
+    },
+  });
+  if (!post) return;
+
+  const member = await getCurrentMember(post.groupId);
+  if (!member) return;
+
+  await db
+    .insert(postViews)
+    .values({ postId, memberId: member.id })
+    .onConflictDoNothing();
 }
 
 export async function setDisplayName(

@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { Video, MessageCircle, MoreVertical, Trash2, Edit, User } from "lucide-react";
 import Link from "next/link";
 
@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deletePost } from "@/app/actions";
 import { db } from "@/db";
-import { comments, posts, reactions } from "@/db/schema";
+import { comments, postViews, posts, reactions } from "@/db/schema";
+import { cn } from "@/lib/utils";
 
 function formatTimeAgo(date: Date) {
   const now = new Date();
@@ -42,10 +43,12 @@ export async function GroupPostGrid({
   groupId,
   groupSlug,
   isAdmin,
+  memberId,
 }: {
   groupId: string;
   groupSlug: string;
   isAdmin: boolean;
+  memberId?: string;
 }) {
   const postList = await db.query.posts.findMany({
     where: eq(posts.groupId, groupId),
@@ -87,6 +90,15 @@ export async function GroupPostGrid({
   const commentCounts: Record<string, number> = {};
   for (const row of commentRows) {
     commentCounts[row.postId] = Number(row.value);
+  }
+
+  const seenPostIds = new Set<string>();
+  if (memberId && postIds.length) {
+    const seenRows = await db
+      .select({ postId: postViews.postId })
+      .from(postViews)
+      .where(and(eq(postViews.memberId, memberId), inArray(postViews.postId, postIds)));
+    seenRows.forEach((row) => seenPostIds.add(row.postId));
   }
 
   async function handleDeletePost(postId: string) {
@@ -133,15 +145,27 @@ export async function GroupPostGrid({
         {postList.map((post) => {
           const preview = getPreview(post);
           const timeAgo = formatTimeAgo(post.createdAt);
-          const isNew =
-            new Date().getTime() - post.createdAt.getTime() <
-            24 * 60 * 60 * 1000;
+          const isSeen = memberId ? seenPostIds.has(post.id) : true;
+          const isUnseen = !isSeen;
           const authorAvatar = post.author?.user?.avatarUrl;
           const authorName = post.author?.displayName;
 
           return (
-            <article key={post.id} className="group relative">
-              <div className="relative h-full overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-900/5 transition-transform hover:scale-[1.02]">
+            <article
+              key={post.id}
+              className={cn(
+                "group relative transition-transform duration-200 active:scale-[0.985]", 
+                isUnseen && "scale-[1.01]"
+              )}
+            >
+              <div
+                className={cn(
+                  "relative h-full overflow-hidden rounded-xl ring-1 ring-slate-900/5 transition-transform",
+                  isUnseen
+                    ? "bg-white shadow-xl ring-blue-100"
+                    : "bg-slate-100 opacity-95"
+                )}
+              >
                 <Link
                   href={`/g/${groupSlug}/post/${post.id}`}
                   className="absolute inset-0 z-10"
@@ -291,14 +315,19 @@ export async function GroupPostGrid({
 
                 <div className="absolute top-0 left-0 right-0 p-2 flex justify-between items-start gap-2 z-20 pointer-events-none flex-wrap">
                   <div className="flex items-center gap-2 pointer-events-none">
-                    <div className="rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                    <div
+                      className={cn(
+                        "rounded-md px-2 py-1 text-xs font-medium backdrop-blur-sm",
+                        isUnseen
+                          ? "bg-blue-600/90 text-white shadow"
+                          : "bg-black/50 text-white"
+                      )}
+                    >
                       {timeAgo}
                     </div>
-                    {isNew && (
-                      <div className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                        NEW
-                      </div>
-                    )}
+                    {isUnseen ? (
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/90 ring-2 ring-blue-500/70 shadow-sm" />
+                    ) : null}
                   </div>
                 </div>
               </div>

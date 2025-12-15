@@ -82,6 +82,16 @@
   body {
     font-family: var(--font-geist-mono);
   }
+
+  .safe-area-wrapper {
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      calc(env(safe-area-inset-bottom) + 12px) env(safe-area-inset-left);
+  }
+
+  .pressable {
+    @apply transition-transform duration-150 active:scale-[0.985] active:opacity-95;
+  }
 }
 
 @layer base {
