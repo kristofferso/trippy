@@ -3,7 +3,13 @@
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, User, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import {
+  ArrowLeft,
+  User,
+  LogOut,
+  LayoutDashboard,
+  Settings,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -72,26 +78,26 @@ export function SiteHeader({
         <div className="flex items-center gap-2">
           {groupId && (
             <>
-            <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
-            {isAdmin && groupSlug && (
-              <>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-slate-500 hover:text-slate-900"
-                >
-                  <Link href={`/g/${groupSlug}/edit`} title="Trip Settings">
-                    <Settings className="h-4 w-4" />
-                    <span className="sr-only">Settings</span>
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link href={`/g/${groupSlug}/post/new`}>New post</Link>
-                </Button>
-              </>
-            )}
-          </>
+              <MembersDialog groupId={groupId} isAdmin={!!isAdmin} />
+              {isAdmin && groupSlug && (
+                <>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-slate-500 hover:text-slate-900"
+                  >
+                    <Link href={`/g/${groupSlug}/edit`} title="Trip Settings">
+                      <Settings className="h-4 w-4" />
+                      <span className="sr-only">Settings</span>
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href={`/g/${groupSlug}/new`}>New post</Link>
+                  </Button>
+                </>
+              )}
+            </>
           )}
 
           {/* If we are not in a group context or if we just want to show the user menu always */}
