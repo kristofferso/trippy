@@ -1,6 +1,7 @@
 "use client";
 
 import { addReaction } from "@/app/actions";
+import { CollapsibleDescription } from "@/components/collapsible-description";
 import { CommentForm } from "@/components/comment-form";
 import { CommentList, type CommentWithAuthor } from "@/components/comment-list";
 import { EmojiRain } from "@/components/emoji-rain";
@@ -179,9 +180,9 @@ export function PostInteractionLayer({
                 </time>
               </div>
               {post.body && (
-                <p className="text-sm text-white/90 drop-shadow-sm line-clamp-3">
-                  {post.body}
-                </p>
+                <CollapsibleDescription
+                  text={post.body}
+                />
               )}
             </div>
           )}

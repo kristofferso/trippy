@@ -188,7 +188,7 @@ export async function createGroup(
       userId: userSession.userId,
     });
 
-  return { success: true, groupId: inserted.id };
+    return { success: true, groupId: inserted.id };
   });
 }
 

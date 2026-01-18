@@ -1,7 +1,8 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
-import { Video, MessageCircle, MoreVertical, Trash2, Edit, User } from "lucide-react";
+import { Edit, MessageCircle, MoreVertical, Trash2, User, Video } from "lucide-react";
 import Link from "next/link";
 
+import { deletePost } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,35 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deletePost } from "@/app/actions";
 import { db } from "@/db";
 import { comments, postViews, posts, reactions } from "@/db/schema";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeAgo } from "@/lib/utils";
+import Image from "next/image";
 
-function formatTimeAgo(date: Date) {
-  const now = new Date();
-  const diffInSeconds = Math.max(
-    0,
-    Math.floor((now.getTime() - date.getTime()) / 1000)
-  );
-
-  if (diffInSeconds < 60) return "just now";
-
-  const minutes = Math.floor(diffInSeconds / 60);
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
-
-  const years = Math.floor(months / 12);
-  return `${years} year${years === 1 ? "" : "s"} ago`;
-}
 
 export async function GroupPostGrid({
   groupId,
@@ -65,14 +42,14 @@ export async function GroupPostGrid({
 
   const reactionRows = postIds.length
     ? await db
-        .select({
-          postId: reactions.postId,
-          emoji: reactions.emoji,
-          value: count(),
-        })
-        .from(reactions)
-        .where(inArray(reactions.postId, postIds))
-        .groupBy(reactions.postId, reactions.emoji)
+      .select({
+        postId: reactions.postId,
+        emoji: reactions.emoji,
+        value: count(),
+      })
+      .from(reactions)
+      .where(inArray(reactions.postId, postIds))
+      .groupBy(reactions.postId, reactions.emoji)
     : [];
   const reactionCounts: Record<string, Record<string, number>> = {};
   for (const row of reactionRows) {
@@ -82,10 +59,10 @@ export async function GroupPostGrid({
 
   const commentRows = postIds.length
     ? await db
-        .select({ postId: comments.postId, value: count() })
-        .from(comments)
-        .where(inArray(comments.postId, postIds))
-        .groupBy(comments.postId)
+      .select({ postId: comments.postId, value: count() })
+      .from(comments)
+      .where(inArray(comments.postId, postIds))
+      .groupBy(comments.postId)
     : [];
   const commentCounts: Record<string, number> = {};
   for (const row of commentRows) {
@@ -101,11 +78,6 @@ export async function GroupPostGrid({
     seenRows.forEach((row) => seenPostIds.add(row.postId));
   }
 
-  async function handleDeletePost(postId: string) {
-    "use server";
-    await deletePost(postId);
-  }
-
   const getPreview = (post: (typeof postList)[number]) => {
     if (post.media && post.media.length > 0) {
       const first = post.media[0];
@@ -118,17 +90,11 @@ export async function GroupPostGrid({
       }
       return { type: "image", url: first.url };
     }
-    if (post.videoUrl) {
-      return { type: "video", url: post.videoUrl, thumbnail: null };
-    }
-    if (post.imageUrls && post.imageUrls.length > 0) {
-      return { type: "image", url: post.imageUrls[0] };
-    }
-    return { type: "text" };
+    return { type: "text", url: "" };
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-md:-mx-4 max-md:-mt-8">
       {postList.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="mb-4 rounded-full bg-slate-100 p-4">
@@ -141,7 +107,7 @@ export async function GroupPostGrid({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px md:grid-cols-3 lg:grid-cols-4">
         {postList.map((post) => {
           const preview = getPreview(post);
           const timeAgo = formatTimeAgo(post.createdAt);
@@ -153,17 +119,12 @@ export async function GroupPostGrid({
           return (
             <article
               key={post.id}
-              className={cn(
-                "group relative transition-transform duration-200 active:scale-[0.985]", 
-                isUnseen && "scale-[1.01]"
-              )}
+              className="group relative"
             >
               <div
                 className={cn(
-                  "relative h-full overflow-hidden rounded-xl ring-1 ring-slate-900/5 transition-transform",
-                  isUnseen
-                    ? "bg-white shadow-xl ring-blue-100"
-                    : "bg-slate-100 opacity-95"
+                  "relative h-full overflow-hidden transition-transform",
+                  isUnseen ? "bg-white shadow-xl" : "bg-slate-100 opacity-95"
                 )}
               >
                 <Link
@@ -180,17 +141,17 @@ export async function GroupPostGrid({
                         <img
                           src={preview.thumbnail}
                           alt=""
-                          className="h-full w-full object-cover"
+                          className="size-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-slate-100">
-                          <Video className="h-12 w-12 text-slate-300" />
+                        <div className="flex size-full items-center justify-center bg-slate-100">
+                          <Video className="size-12 text-slate-300" />
                         </div>
                       )}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/20">
                         <div className="rounded-full bg-white/90 p-3 backdrop-blur-sm transition-transform group-hover:scale-110">
                           <Video
-                            className="h-5 w-5 text-slate-900"
+                            className="size-5 text-slate-900"
                             fill="currentColor"
                           />
                         </div>
@@ -198,16 +159,14 @@ export async function GroupPostGrid({
                     </>
                   ) : preview.type === "image" ? (
                     <>
-                      <img
+                      <Image
                         src={preview.url}
                         alt={post.title || ""}
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                        className="object-cover"
                       />
-                      {(post.imageUrls?.length || 0) > 1 && (
-                        <div className="absolute top-2 right-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                          +{(post.imageUrls?.length || 0) - 1}
-                        </div>
-                      )}
+
                     </>
                   ) : (
                     <div className="flex h-full flex-col justify-center p-6 bg-white text-center">
@@ -222,19 +181,25 @@ export async function GroupPostGrid({
                     </div>
                   )}
 
+                  {(post.media?.length || 0) > 1 && (
+                    <div className="absolute top-2 right-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      +{(post.media?.length || 0) - 1}
+                    </div>
+                  )}
+
                   {/* Gradient Overlay */}
                   <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-100" />
 
                   {/* Stats Overlay */}
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white opacity-100 z-20 pointer-events-none">
                     <div className="flex flex-col gap-2">
-                       {/* Author Avatar */}
-                       <div className="flex items-center gap-1.5 opacity-90">
+                      {/* Author Avatar */}
+                      <div className="flex items-center gap-1.5 opacity-90">
                         <div className="h-5 w-5 rounded-full bg-white/20 overflow-hidden ring-1 ring-white/30">
                           {authorAvatar ? (
-                            <img src={authorAvatar} alt={authorName} className="h-full w-full object-cover" />
+                            <img src={authorAvatar} alt={authorName} className="size-full object-cover" />
                           ) : (
-                            <div className="h-full w-full flex items-center justify-center bg-slate-400">
+                            <div className="size-full flex items-center justify-center bg-slate-400">
                               <User className="h-3 w-3 text-white" />
                             </div>
                           )}
@@ -256,32 +221,32 @@ export async function GroupPostGrid({
                           (a, b) => a + b,
                           0
                         ) > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span>
-                              {Object.keys(reactionCounts[post.id] ?? {}).join(
-                                ""
-                              )}
-                            </span>
-                            <span>
-                              {Object.values(
-                                reactionCounts[post.id] ?? {}
-                              ).reduce((a, b) => a + b, 0)}
-                            </span>
-                          </div>
-                        )}
+                            <div className="flex items-center gap-1">
+                              <span>
+                                {Object.keys(reactionCounts[post.id] ?? {}).join(
+                                  ""
+                                )}
+                              </span>
+                              <span>
+                                {Object.values(
+                                  reactionCounts[post.id] ?? {}
+                                ).reduce((a, b) => a + b, 0)}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     </div>
 
                     {isAdmin && (
-                      <div className="pointer-events-auto">
+                      <div className="pointer-events-auto shrink-0">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
+                              className="size-8 rounded-full bg-black/50 text-white hover:bg-black/70 hover:text-white"
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="size-4" />
                               <span className="sr-only">More options</span>
                             </Button>
                           </DropdownMenuTrigger>
@@ -291,21 +256,22 @@ export async function GroupPostGrid({
                                 href={`/g/${groupSlug}/post/${post.id}/edit`}
                                 className="flex w-full cursor-pointer items-center"
                               >
-                                <Edit className="mr-2 h-4 w-4" />
+                                <Edit className="mr-2 size-4" />
                                 Edit Post
                               </Link>
                             </DropdownMenuItem>
-                            <form action={handleDeletePost.bind(null, post.id)}>
-                              <DropdownMenuItem asChild>
-                                <button
-                                  type="submit"
-                                  className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete Post
-                                </button>
-                              </DropdownMenuItem>
-                            </form>
+
+                            <DropdownMenuItem asChild>
+                              <button
+
+                                onClick={() => deletePost(post.id)}
+                                className="flex w-full cursor-pointer items-center text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 size-4" />
+                                Delete Post
+                              </button>
+                            </DropdownMenuItem>
+
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -325,9 +291,7 @@ export async function GroupPostGrid({
                     >
                       {timeAgo}
                     </div>
-                    {isUnseen ? (
-                      <span className="h-2.5 w-2.5 rounded-full bg-white/90 ring-2 ring-blue-500/70 shadow-sm" />
-                    ) : null}
+
                   </div>
                 </div>
               </div>
@@ -335,6 +299,7 @@ export async function GroupPostGrid({
           );
         })}
       </div>
+      <p className="text-center text-muted-foreground text-xs">The beginning</p>
     </div>
   );
 }
