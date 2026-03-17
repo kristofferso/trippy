@@ -220,7 +220,6 @@ export async function setDisplayName(
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
 
-  // If setting display name, it usually means becoming a member (guest or user)
   if (!groupId) return { error: "Group ID required" };
 
   const userSession = await getUserSession();
@@ -228,10 +227,15 @@ export async function setDisplayName(
   // Check if already member
   let member = await getCurrentMember(groupId);
   if (member) {
-    // Update existing member? Or just return success?
-    // The UI uses this for initial "join/name" gate.
-    // If already member, maybe just update name?
     return { success: true, member };
+  }
+
+  // Verify the caller has a valid member session for this group.
+  // This ensures they have already passed the password gate (via joinGroupBySlug)
+  // and prevents bypassing the password by calling setDisplayName directly.
+  const existingSession = await getMemberSession(groupId);
+  if (!existingSession) {
+    return { error: "Not authorized for this group" };
   }
 
   const memberCount = await db
@@ -264,7 +268,6 @@ export async function setDisplayName(
         .update(groupMembers)
         .set({ email: parsed.data.email })
         .where(eq(groupMembers.id, newMember.id));
-      // Update local object to return correct data
       newMember.email = parsed.data.email;
     }
   } else {
@@ -282,12 +285,10 @@ export async function setDisplayName(
   }
 
   if (!userSession) {
-    // Create session for guest
-    await createMemberSession(groupId, newMember.id);
+    // Attach the new member to the existing session instead of creating a new one
+    await attachMemberToMemberSession(existingSession.id, newMember.id);
   } else {
-    // Ensure we revalidate so `getCurrentMember` picks it up
-    revalidatePath(`/g/${groupId}`); // Assuming we know the slug? We only have ID here.
-    // We might need to find the group to revalidate properly or just rely on next refresh
+    revalidatePath(`/g/${groupId}`);
   }
 
   return { success: true, member: newMember };
@@ -457,6 +458,9 @@ export async function postComment(
       where: eq(comments.id, parentId),
     });
     if (!parentComment) return { error: "Parent comment not found" };
+    if (parentComment.postId !== postId) {
+      return { error: "Parent comment belongs to a different post" };
+    }
     if (parentComment.parentId) {
       return { error: "Replies are limited to 2 levels" };
     }
@@ -610,6 +614,15 @@ export async function getGroupMembers(groupId: string) {
 }
 
 export async function getReactionDetails(postId: string, emoji: string | null) {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+    columns: { groupId: true },
+  });
+  if (!post) return [];
+
+  const member = await getCurrentMember(post.groupId);
+  if (!member) return [];
+
   const filters = [eq(reactions.postId, postId)];
   if (emoji) {
     filters.push(eq(reactions.emoji, emoji));
@@ -763,6 +776,11 @@ export async function updatePasswordAction(formData: FormData) {
 export async function updateUserAvatarAction(avatarUrl: string | null) {
   const session = await getUserSession();
   if (!session) return { error: "Not logged in" };
+
+  if (avatarUrl !== null) {
+    const parsed = z.string().url().safeParse(avatarUrl);
+    if (!parsed.success) return { error: "Invalid avatar URL" };
+  }
 
   await db
     .update(users)

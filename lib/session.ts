@@ -36,6 +36,14 @@ export async function getMemberSession(groupId?: string) {
 
   if (!existing) return null;
   if (groupId && existing.groupId !== groupId) return null;
+
+  // Check session expiration if set
+  if (existing.expiresAt && new Date(existing.expiresAt) < new Date()) {
+    await db.delete(memberSessions).where(eq(memberSessions.id, sessionId));
+    store.delete(MEMBER_SESSION_COOKIE);
+    return null;
+  }
+
   return existing;
 }
 
@@ -80,12 +88,22 @@ export async function getUserSession() {
   });
 
   if (!session) return null;
+
+  // Check session expiration if set
+  if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+    await db.delete(userSessions).where(eq(userSessions.id, sessionId));
+    store.delete(USER_SESSION_COOKIE);
+    return null;
+  }
+
   return session;
 }
 
 export async function createUserSession(userId: string) {
   const id = randomBytes(32).toString("hex");
-  await db.insert(userSessions).values({ id, userId });
+  const maxAgeSec = 60 * 60 * 24 * 90; // 90 days
+  const expiresAt = new Date(Date.now() + maxAgeSec * 1000);
+  await db.insert(userSessions).values({ id, userId, expiresAt });
 
   const store = await cookies();
   store.set(USER_SESSION_COOKIE, id, {
@@ -93,7 +111,7 @@ export async function createUserSession(userId: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 90, // 90 days
+    maxAge: maxAgeSec,
   });
 
   return id;
@@ -101,6 +119,10 @@ export async function createUserSession(userId: string) {
 
 export async function logoutUser() {
   const store = await cookies();
+  const sessionId = store.get(USER_SESSION_COOKIE)?.value;
+  if (sessionId) {
+    await db.delete(userSessions).where(eq(userSessions.id, sessionId));
+  }
   store.delete(USER_SESSION_COOKIE);
 }
 
