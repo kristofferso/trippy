@@ -22,9 +22,9 @@ function isAuthorized(req: Request) {
   const auth = req.headers.get("authorization");
   if (auth === `Bearer ${secret}`) return true;
 
-  const url = new URL(req.url);
-  const key = url.searchParams.get("key");
-  if (key && key === secret) return true;
+  // Intentionally removed: accepting secret via query parameter (?key=...) is insecure
+  // because URLs are logged in server logs, referrer headers, and browser history.
+  // Use the Authorization header instead: `Authorization: Bearer <secret>`
 
   return false;
 }
