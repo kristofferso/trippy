@@ -38,19 +38,44 @@ async function findUnlinkedMember(
   email?: string | null
 ) {
   const nameMatch = sql`lower(${groupMembers.displayName}) = lower(${displayName})`;
-  const emailMatch = email
-    ? sql`lower(${groupMembers.email}) = lower(${email})`
-    : undefined;
 
-  const matchCondition = emailMatch ? or(nameMatch, emailMatch) : nameMatch;
-
-  return db.query.groupMembers.findFirst({
+  // Find candidates that match by name and are unlinked
+  const candidates = await db.query.groupMembers.findMany({
     where: and(
       eq(groupMembers.groupId, groupId),
       isNull(groupMembers.userId),
-      matchCondition
+      nameMatch
     ),
   });
+
+  for (const candidate of candidates) {
+    if (candidate.email) {
+      // If the unlinked member has an email on record, the caller MUST provide
+      // a matching email to reclaim. This prevents strangers who only know
+      // a display name from taking over accounts that have email set.
+      if (email && candidate.email.toLowerCase() === email.toLowerCase()) {
+        return candidate;
+      }
+      // Name matched but email didn't — skip, don't give it away
+      continue;
+    }
+    // No email on record — allow name-only reclaim (legacy guest accounts)
+    return candidate;
+  }
+
+  // Also try matching by email alone (e.g. admin pre-created a member with
+  // an email but a different display name)
+  if (email) {
+    return db.query.groupMembers.findFirst({
+      where: and(
+        eq(groupMembers.groupId, groupId),
+        isNull(groupMembers.userId),
+        sql`lower(${groupMembers.email}) = lower(${email})`
+      ),
+    });
+  }
+
+  return undefined;
 }
 
 async function getMember(memberId: string) {
